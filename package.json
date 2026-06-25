@@ -1,0 +1,37 @@
+{
+  "name": "salesforce-api-tests",
+  "version": "1.0.0",
+  "description": "Salesforce API automated tests with Jest, Pactum and TypeScript",
+  "scripts": {
+    "test:int": "cross-env TEST_ENV=int jest --config jest.config.ts",
+    "test:qa":  "cross-env TEST_ENV=qa  jest --config jest.config.ts",
+    "test:stg": "cross-env TEST_ENV=stg jest --config jest.config.ts",
+    "test:prd": "cross-env TEST_ENV=prd jest --config jest.config.ts",
+
+"find-test-data":     "node node_modules/ts-node/dist/bin.js src/scripts/find-test-data.ts qa",
+    "find-test-data:int": "node node_modules/ts-node/dist/bin.js src/scripts/find-test-data.ts int",
+    "find-test-data:qa":  "node node_modules/ts-node/dist/bin.js src/scripts/find-test-data.ts qa",
+    "find-test-data:stg": "node node_modules/ts-node/dist/bin.js src/scripts/find-test-data.ts stg",
+    "find-test-data:prd": "node node_modules/ts-node/dist/bin.js src/scripts/find-test-data.ts prd"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@faker-js/faker": "^8.4.1",
+    "@types/jest": "^30.0.0",
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.4.2",
+    "jest": "^30.4.2",
+    "jest-html-reporter": "^4.4.0",
+    "jest-junit": "^17.0.0",
+    "pactum": "^3.9.1",
+    "ts-jest": "^29.4.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.8.0"
+  }
+}

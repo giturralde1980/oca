@@ -1,0 +1,7 @@
+node_modules/
+dist/
+reports/
+.env
+.env.*
+!.env.example
+.sf_token_cache.json
