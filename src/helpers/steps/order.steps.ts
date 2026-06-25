@@ -9,10 +9,13 @@ export async function patchOrderActivity(
   orderId:     string,
   activity:    string,
   actividadLN: string,
+  activoId?:   string,
 ): Promise<void> {
+  const body: Record<string, unknown> = { Activity__c: activity, Actividad_LN__c: actividadLN };
+  if (activoId) body['Activo__c'] = activoId;
   await pactum.spec()
     .patch(`/sobjects/Order/${orderId}`)
-    .withBody({ Activity__c: activity, Actividad_LN__c: actividadLN })
+    .withBody(body)
     .expectStatus(204);
 }
 

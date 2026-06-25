@@ -4,6 +4,8 @@ import { buildOpportunityIndustria } from '../fixtures/opportunity.industria.fix
 import { buildQuoteIndustria }        from '../fixtures/quote.industria.fixture';
 import { TestReport }                 from '../report.helper';
 import { patchOrderActivity, queryOrderByQuoteId } from './order.steps';
+
+const INDUSTRIA_ASSET_ID = '02iJW000000ATVqYAO';
 import pactum from 'pactum';
 import {
   SourceLineItem,
@@ -89,8 +91,8 @@ export async function waitAndPatchIndustriaOrderActivity(
     await new Promise(r => setTimeout(r, intervalMs));
     const orderId = await queryOrderByQuoteId(quoteId);
     if (orderId) {
-      await patchOrderActivity(orderId, '6100', '6100_1');
-      report.step('Parchear Activity en Order', { 'Order Id': orderId, 'Activity__c': '6100', 'Actividad_LN__c': '6100_1' });
+      await patchOrderActivity(orderId, '6100', '6100_1', INDUSTRIA_ASSET_ID);
+      report.step('Parchear Activity en Order', { 'Order Id': orderId, 'Activity__c': '6100', 'Actividad_LN__c': '6100_1', 'Activo__c': INDUSTRIA_ASSET_ID });
       return orderId;
     }
   }
