@@ -209,15 +209,27 @@ export async function scheduleServiceAppointment(
   return { schedStartTime, schedEndTime };
 }
 
-/** Sets Technician__c on the WorkOrder to the assigned internal technician. */
+/** Updates ServiceAppointment Status to Dispatched. */
+export async function dispatchServiceAppointment(
+  saId:   string,
+  report: TestReport,
+): Promise<void> {
+  await updateRecord('ServiceAppointment', saId, { Status: 'Dispatched' });
+  report.step('Despachar ServiceAppointment', { 'SA Id': saId, 'Status': 'Dispatched' }, 'ok');
+}
+
+/** Sets Technician__c (and optionally Activo__c) on the WorkOrder. */
 export async function assignTechnicianToWorkOrder(
   workOrderId: string,
   report:      TestReport,
+  activoId?:   string,
 ): Promise<void> {
-  await updateRecord('WorkOrder', workOrderId, { Technician__c: TECHNICIAN_ID });
+  const body: Record<string, unknown> = { Technician__c: TECHNICIAN_ID };
+  if (activoId) body['AssetId'] = activoId;
+  await updateRecord('WorkOrder', workOrderId, body);
   report.step(
     'Asignar Technician__c en WorkOrder',
-    { 'WorkOrder Id': workOrderId, 'Technician__c': TECHNICIAN_ID },
+    { 'WorkOrder Id': workOrderId, 'Technician__c': TECHNICIAN_ID, ...(activoId ? { 'AssetId': activoId } : {}) },
     'ok',
   );
 }

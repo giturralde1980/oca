@@ -1,6 +1,6 @@
 import { setupPactum }             from '../../../../helpers/request.helper';
 import { TestReport, SuiteReport } from '../../../../helpers/report.helper';
-import { verifyOrderSyncedByOrderId, queryWorkOrderByOrderId, assertServiceAppointmentForOrder, scheduleServiceAppointment, assignTechnicianToWorkOrder } from '../../../../helpers/steps/order.steps';
+import { verifyOrderSyncedByOrderId, queryWorkOrderByOrderId, assertServiceAppointmentForOrder, scheduleServiceAppointment, dispatchServiceAppointment, assignTechnicianToWorkOrder } from '../../../../helpers/steps/order.steps';
 import {
   getSourceLineItem,
   setupIndustriaQuote,
@@ -54,13 +54,21 @@ describe('Funcional — Quotes Industria', () => {
 
       const workOrderId = await queryWorkOrderByOrderId(orderId);
       expect(workOrderId).toBeTruthy();
+      console.log(`[e2e] Order Id:     ${orderId}`);
+      console.log(`[e2e] WorkOrder Id: ${workOrderId}`);
 
       const sa = await assertServiceAppointmentForOrder(orderId, report);
       expect(sa.Id).toBeTruthy();
       expect(sa.Status).toBe('pending_scheduling');
+      console.log(`[e2e] SA Id:        ${sa.Id}  (Status: ${sa.Status})`);
 
       await scheduleServiceAppointment(sa.Id, report);
-      await assignTechnicianToWorkOrder(workOrderId!, report);
+      await assignTechnicianToWorkOrder(workOrderId!, report, '02iJW000007GBUvYAO');
+      await dispatchServiceAppointment(sa.Id, report);
+
+      const saIrecs = await assertIntegrationSuccess(sa.Id, 1, report, 'Verificar Integration_Request (ServiceAppointment)');
+      expect(saIrecs[0].Status__c).toBe('success');
+      console.log(`[e2e] Technician__c + Activo__c asignados en WorkOrder ${workOrderId}`);
 
       expect(oppId).toBeTruthy();
       expect(quoteId).toBeTruthy();
