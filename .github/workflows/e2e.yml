@@ -50,7 +50,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Resuelve los inputs independientemente de cómo se lanzó el workflow
       - name: Resolve inputs
         id: ctx
         run: |
@@ -59,8 +58,6 @@ jobs:
           echo "test_env=${TEST_ENV}"         >> $GITHUB_OUTPUT
           echo "test_pattern=${TEST_PATTERN}" >> $GITHUB_OUTPUT
 
-      # Escribe el fichero .env.<env> usando printf para que caracteres especiales
-      # del Consumer Key (=, +, /) no sean interpretados por el shell
       - name: Write .env file
         env:
           SF_BASE_URL:      ${{ secrets.SF_BASE_URL }}
@@ -70,7 +67,6 @@ jobs:
           printf 'SF_BASE_URL=%s\nSF_CLIENT_ID=%s\nSF_CLIENT_SECRET=%s\nSF_API_VERSION=v59.0\n' \
             "${SF_BASE_URL}" "${SF_CLIENT_ID}" "${SF_CLIENT_SECRET}" \
             > .env.${{ steps.ctx.outputs.test_env }}
-          echo "→ .env escritos: $(wc -c < .env.${{ steps.ctx.outputs.test_env }}) bytes | SF_CLIENT_ID length=$(printf '%s' "${SF_CLIENT_ID}" | wc -c)"
 
       - name: Run E2E tests
         id: tests
@@ -82,77 +78,27 @@ jobs:
             --verbose \
             --forceExit
 
-      # ── Detecta si los secrets opcionales están configurados ─────────────────
-      - name: Resolve optional secrets
-        if: always()
-        id: opt
-        env:
-          GMAIL_PWD:  ${{ secrets.GMAIL_APP_PASSWORD }}
-          GDRIVE_KEY: ${{ secrets.GDRIVE_SA_KEY }}
-        run: |
-          [[ -n "${GMAIL_PWD}"  ]] && echo "gmail=true"  >> $GITHUB_OUTPUT || echo "gmail=false"  >> $GITHUB_OUTPUT
-          [[ -n "${GDRIVE_KEY}" ]] && echo "gdrive=true" >> $GITHUB_OUTPUT || echo "gdrive=false" >> $GITHUB_OUTPUT
-
-      # ── Localiza el reporte HTML combinado ───────────────────────────────────
-      - name: Find combined report
-        if: always()
-        id: report
-        run: |
-          FILE=$(ls reports/e2e_[0-9]*.html 2>/dev/null | head -1 \
-              || ls reports/e2e_*.html 2>/dev/null | head -1 \
-              || echo "")
-          echo "file=${FILE}" >> $GITHUB_OUTPUT
-          echo "→ report: ${FILE}"
-
-      # ── Email con el HTML adjunto ─────────────────────────────────────────────
-      # Requiere en GitHub Secrets:
-      #   GMAIL_USERNAME     → german.iturralde@gmail.com
-      #   GMAIL_APP_PASSWORD → contraseña de aplicación (16 chars)
-      #                        https://myaccount.google.com/apppasswords
-      - name: Send email report
-        if: always() && steps.opt.outputs.gmail == 'true'
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.GMAIL_USERNAME }}
-          password: ${{ secrets.GMAIL_APP_PASSWORD }}
-          subject: >
-            E2E ${{ steps.ctx.outputs.test_env }} — ${{ job.status }} — run #${{ github.run_number }}
-          to: german.iturralde@gmail.com
-          from: E2E QA <${{ secrets.GMAIL_USERNAME }}>
-          html_body: |
-            <h2>E2E Salesforce QA</h2>
-            <table cellpadding="6" style="border-collapse:collapse">
-              <tr><td><b>Entorno</b></td><td>${{ steps.ctx.outputs.test_env }}</td></tr>
-              <tr><td><b>Patrón</b></td><td>${{ steps.ctx.outputs.test_pattern }}</td></tr>
-              <tr><td><b>Estado</b></td><td><b>${{ job.status }}</b></td></tr>
-              <tr><td><b>Run</b></td><td>#${{ github.run_number }}</td></tr>
-            </table>
-            <p><a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">
-              Ver logs completos en GitHub Actions
-            </a></p>
-            <p>El reporte HTML completo se adjunta a este correo.</p>
-          attachments: ${{ steps.report.outputs.file }}
-
-      # ── Google Drive ──────────────────────────────────────────────────────────
-      # Requiere en GitHub Secrets:
-      #   GDRIVE_SA_KEY     → JSON completo de la Service Account (Google Cloud)
-      #   GDRIVE_FOLDER_ID  → ID de la carpeta de Drive (compartida con la SA)
+      # ── Sube el reporte HTML a Google Drive ───────────────────────────────────
+      # Secrets necesarios (una sola vez en github.com/giturralde1980/oca/settings/secrets/actions):
       #
-      # Setup (una sola vez):
-      #   1. Google Cloud Console → APIs → Drive API → Habilitar
-      #   2. IAM → Service Accounts → Crear → descargar JSON → pegar en GDRIVE_SA_KEY
-      #   3. En Drive, compartir la carpeta destino con el email de la SA (editor)
-      #   4. Copiar el ID de la carpeta (parte final de la URL) → GDRIVE_FOLDER_ID
-      - name: Upload to Google Drive
-        if: always() && steps.opt.outputs.gdrive == 'true'
+      #   GDRIVE_SA_KEY    → JSON completo de la Service Account de Google Cloud
+      #   GDRIVE_FOLDER_ID → ID de la carpeta de Drive compartida con la Service Account
+      #
+      # Setup paso a paso:
+      #   1. console.cloud.google.com → nuevo proyecto → habilitar "Google Drive API"
+      #   2. IAM → Cuentas de servicio → Crear → descargar clave JSON → pegar en GDRIVE_SA_KEY
+      #   3. En Drive: crear carpeta "E2E Reports" → compartir con el email de la SA (editor)
+      #   4. Copiar el ID de la carpeta desde la URL → pegar en GDRIVE_FOLDER_ID
+      - name: Upload report to Google Drive
+        if: always()
         env:
           GDRIVE_SA_KEY:    ${{ secrets.GDRIVE_SA_KEY }}
           GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
-          REPORT_FILE:      ${{ steps.report.outputs.file }}
         run: |
+          if [[ -z "${GDRIVE_SA_KEY}" ]]; then
+            echo "⚠ GDRIVE_SA_KEY no configurado — omitiendo subida a Drive"
+            exit 0
+          fi
           pip install --quiet google-api-python-client google-auth
           python3 - <<'PYEOF'
           import os, json, glob, sys
@@ -162,14 +108,13 @@ jobs:
 
           sa_info   = json.loads(os.environ['GDRIVE_SA_KEY'])
           folder_id = os.environ.get('GDRIVE_FOLDER_ID', '')
-          report    = os.environ.get('REPORT_FILE', '')
 
           creds = service_account.Credentials.from_service_account_info(
               sa_info, scopes=['https://www.googleapis.com/auth/drive.file']
           )
           service = build('drive', 'v3', credentials=creds, cache_discovery=False)
 
-          files = [report] if (report and os.path.isfile(report)) else glob.glob('reports/e2e_*.html')
+          files = sorted(glob.glob('reports/e2e_*.html'))
           if not files:
               print('No report files found — skip Drive upload')
               sys.exit(0)
@@ -181,5 +126,5 @@ jobs:
                   meta['parents'] = [folder_id]
               media  = MediaFileUpload(f, mimetype='text/html')
               result = service.files().create(body=meta, media_body=media, fields='id,name').execute()
-              print(f"Uploaded: {result['name']} → https://drive.google.com/file/d/{result['id']}/view")
+              print(f"✓ {result['name']} → https://drive.google.com/file/d/{result['id']}/view")
           PYEOF
