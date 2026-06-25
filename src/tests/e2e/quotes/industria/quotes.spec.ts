@@ -1,6 +1,6 @@
 import { setupPactum }             from '../../../../helpers/request.helper';
 import { TestReport, SuiteReport } from '../../../../helpers/report.helper';
-import { verifyOrderSyncedByOrderId, assertServiceAppointmentForOrder, scheduleServiceAppointment } from '../../../../helpers/steps/order.steps';
+import { verifyOrderSyncedByOrderId, queryWorkOrderByOrderId, assertServiceAppointmentForOrder, scheduleServiceAppointment, assignTechnicianToWorkOrder } from '../../../../helpers/steps/order.steps';
 import {
   getSourceLineItem,
   setupIndustriaQuote,
@@ -52,11 +52,15 @@ describe('Funcional — Quotes Industria', () => {
       const irecs = await assertIntegrationSuccess(orderId, 1, report, 'Verificar Integration_Request (Order)');
       expect(irecs[0].Status__c).toBe('success');
 
+      const workOrderId = await queryWorkOrderByOrderId(orderId);
+      expect(workOrderId).toBeTruthy();
+
       const sa = await assertServiceAppointmentForOrder(orderId, report);
       expect(sa.Id).toBeTruthy();
       expect(sa.Status).toBe('pending_scheduling');
 
       await scheduleServiceAppointment(sa.Id, report);
+      await assignTechnicianToWorkOrder(workOrderId!, report);
 
       expect(oppId).toBeTruthy();
       expect(quoteId).toBeTruthy();

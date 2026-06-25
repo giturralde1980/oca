@@ -206,3 +206,15 @@ export async function scheduleServiceAppointment(
   return { schedStartTime, schedEndTime };
 }
 
+/** Sets Technician__c on the WorkOrder to the assigned internal technician. */
+export async function assignTechnicianToWorkOrder(
+  workOrderId: string,
+  report:      TestReport,
+): Promise<void> {
+  await updateRecord('WorkOrder', workOrderId, { Technician__c: TECHNICIAN_ID });
+  report.step(
+    'Asignar Technician__c en WorkOrder',
+    { 'WorkOrder Id': workOrderId, 'Technician__c': TECHNICIAN_ID },
+    'ok',
+  );
+}
