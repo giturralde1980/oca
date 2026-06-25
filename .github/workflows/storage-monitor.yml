@@ -21,10 +21,12 @@ jobs:
         run: |
           python3 - <<'PYEOF'
           import json, os, sys, urllib.request, urllib.parse
+          from datetime import datetime, timezone
 
           base_url      = os.environ['SF_BASE_URL']
           client_id     = os.environ['SF_CLIENT_ID']
           client_secret = os.environ['SF_CLIENT_SECRET']
+          summary_file  = os.environ.get('GITHUB_STEP_SUMMARY', '')
 
           # ── Auth ──────────────────────────────────────────────────────────────
           body = urllib.parse.urlencode({
@@ -46,41 +48,72 @@ jobs:
           limits = json.loads(urllib.request.urlopen(req).read())
 
           # ── Checks ────────────────────────────────────────────────────────────
-          THRESHOLD = 98   # % a partir del cual se considera alerta
+          THRESHOLD = 98
           CHECKS = [
               ('DataStorageMB',      'Data Storage'),
               ('FileStorageMB',      'File Storage'),
               ('BigObjectStorageMB', 'Big Object Storage'),
           ]
 
-          print(f"\n{'Tipo':<25} {'Usado (MB)':>12} {'Límite (MB)':>12} {'% Usado':>9}")
-          print('-' * 62)
-
+          now    = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+          rows   = []
           alerts = []
+
           for key, label in CHECKS:
               if key not in limits:
-                  print(f"{label:<25} {'N/A':>12}")
+                  rows.append((label, 'N/A', 'N/A', 'N/A', False))
                   continue
               entry     = limits[key]
               maximum   = entry['Max']
               remaining = entry['Remaining']
               used      = maximum - remaining
               pct       = round(used / maximum * 100, 1) if maximum > 0 else 0
-              flag      = ' ⚠ ALERTA' if pct >= THRESHOLD else ''
-              print(f"{label:<25} {used:>12,.0f} {maximum:>12,.0f} {pct:>8.1f}%{flag}")
-              if pct >= THRESHOLD:
+              over      = pct >= THRESHOLD
+              rows.append((label, f'{used:,.0f}', f'{maximum:,.0f}', f'{pct:.1f}%', over))
+              if over:
                   alerts.append((label, pct, used, maximum))
 
+          # ── Job Summary (Markdown) ─────────────────────────────────────────────
+          status_icon = '🔴' if alerts else '🟢'
+          status_text = 'ALERTA — Acción requerida' if alerts else 'OK — Dentro de límites'
+
+          md = [
+              f'## {status_icon} Salesforce Storage Monitor',
+              f'**{now}** &nbsp;·&nbsp; Umbral de alerta: **{THRESHOLD}%**',
+              '',
+              '| Tipo | Usado (MB) | Límite (MB) | % Usado | Estado |',
+              '|---|--:|--:|--:|:---:|',
+          ]
+          for label, used, maximum, pct, over in rows:
+              icon = '⚠️' if over else '✅'
+              md.append(f'| {label} | {used} | {maximum} | {pct} | {icon} |')
+
+          md += ['']
+          if alerts:
+              md.append('### ⚠️ Almacenamiento crítico')
+              for label, pct, used, maximum in alerts:
+                  md.append(f'- **{label}**: {pct}% usado ({used:,.0f} MB de {maximum:,.0f} MB)')
+          else:
+              md.append(f'> Todos los tipos de almacenamiento están por debajo del {THRESHOLD}%.')
+
+          md_text = '\n'.join(md)
+
+          if summary_file:
+              with open(summary_file, 'w') as f:
+                  f.write(md_text)
+
+          # ── Consola (fallback) ────────────────────────────────────────────────
+          print(f'\nSalesforce Storage — {now}')
+          print(f"{'Tipo':<25} {'Usado':>12} {'Límite':>12} {'%':>8}")
+          print('-' * 60)
+          for label, used, maximum, pct, over in rows:
+              flag = ' ⚠' if over else ''
+              print(f'{label:<25} {used:>12} {maximum:>12} {pct:>8}{flag}')
           print()
 
           if alerts:
-              print('=' * 62)
-              print('ALMACENAMIENTO POR ENCIMA DEL 90% — ACCIÓN REQUERIDA')
-              print('=' * 62)
-              for label, pct, used, maximum in alerts:
-                  print(f'  • {label}: {pct}% usado ({used:,.0f} MB de {maximum:,.0f} MB)')
-              print()
+              print(f'ALERTA: almacenamiento >= {THRESHOLD}%')
               sys.exit(1)
           else:
-              print('Almacenamiento dentro de límites (< 90%). OK.')
+              print(f'OK — todos los tipos por debajo del {THRESHOLD}%.')
           PYEOF
