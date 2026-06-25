@@ -1,0 +1,86 @@
+name: Salesforce Storage Monitor
+
+on:
+  schedule:
+    - cron: '30 8 * * *'   # 08:30 UTC diario
+    - cron: '30 20 * * *'  # 20:30 UTC diario
+  workflow_dispatch:        # lanzamiento manual desde GitHub UI
+
+jobs:
+  check-storage:
+    name: Storage Check · ${{ github.event_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check Salesforce storage limits
+        env:
+          SF_BASE_URL:      ${{ secrets.SF_BASE_URL }}
+          SF_CLIENT_ID:     ${{ secrets.SF_CLIENT_ID }}
+          SF_CLIENT_SECRET: ${{ secrets.SF_CLIENT_SECRET }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, sys, urllib.request, urllib.parse
+
+          base_url      = os.environ['SF_BASE_URL']
+          client_id     = os.environ['SF_CLIENT_ID']
+          client_secret = os.environ['SF_CLIENT_SECRET']
+
+          # ── Auth ──────────────────────────────────────────────────────────────
+          body = urllib.parse.urlencode({
+              'grant_type':    'client_credentials',
+              'client_id':     client_id,
+              'client_secret': client_secret,
+          }).encode()
+          req  = urllib.request.Request(base_url, data=body, method='POST')
+          resp = urllib.request.urlopen(req)
+          auth = json.loads(resp.read())
+          token        = auth['access_token']
+          instance_url = auth['instance_url']
+
+          # ── Limits API ────────────────────────────────────────────────────────
+          req = urllib.request.Request(
+              f'{instance_url}/services/data/v59.0/limits/',
+              headers={'Authorization': f'Bearer {token}'},
+          )
+          limits = json.loads(urllib.request.urlopen(req).read())
+
+          # ── Checks ────────────────────────────────────────────────────────────
+          THRESHOLD = 90   # % a partir del cual se considera alerta
+          CHECKS = [
+              ('DataStorageMB',      'Data Storage'),
+              ('FileStorageMB',      'File Storage'),
+              ('BigObjectStorageMB', 'Big Object Storage'),
+          ]
+
+          print(f"\n{'Tipo':<25} {'Usado (MB)':>12} {'Límite (MB)':>12} {'% Usado':>9}")
+          print('-' * 62)
+
+          alerts = []
+          for key, label in CHECKS:
+              if key not in limits:
+                  print(f"{label:<25} {'N/A':>12}")
+                  continue
+              entry     = limits[key]
+              maximum   = entry['Max']
+              remaining = entry['Remaining']
+              used      = maximum - remaining
+              pct       = round(used / maximum * 100, 1) if maximum > 0 else 0
+              flag      = ' ⚠ ALERTA' if pct >= THRESHOLD else ''
+              print(f"{label:<25} {used:>12,.0f} {maximum:>12,.0f} {pct:>8.1f}%{flag}")
+              if pct >= THRESHOLD:
+                  alerts.append((label, pct, used, maximum))
+
+          print()
+
+          if alerts:
+              print('=' * 62)
+              print('ALMACENAMIENTO POR ENCIMA DEL 90% — ACCIÓN REQUERIDA')
+              print('=' * 62)
+              for label, pct, used, maximum in alerts:
+                  print(f'  • {label}: {pct}% usado ({used:,.0f} MB de {maximum:,.0f} MB)')
+              print()
+              sys.exit(1)
+          else:
+              print('Almacenamiento dentro de límites (< 90%). OK.')
+          PYEOF
