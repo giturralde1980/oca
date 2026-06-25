@@ -39,7 +39,7 @@ describe('Funcional — Quotes Industria', () => {
       // Include Activity in the won PATCH — the UI form sets this explicitly and the trigger
       // uses it when creating the Order; without it, Order.Activity__c = null → ProfitCenter=CK0800.
       // Concurrent poll patches the Order Activity as safety net.
-      const [, orderId] = await Promise.all([
+      const [, { orderId, assetId }] = await Promise.all([
         changeIndustriaQuoteStatusToWon(quoteId, report),
         waitAndPatchIndustriaOrderActivity(quoteId, report),
       ]);
@@ -63,7 +63,7 @@ describe('Funcional — Quotes Industria', () => {
       console.log(`[e2e] SA Id:        ${sa.Id}  (Status: ${sa.Status})`);
 
       await scheduleServiceAppointment(sa.Id, report);
-      await assignTechnicianToWorkOrder(workOrderId!, report, '02iJW000000ATVpYAO');
+      await assignTechnicianToWorkOrder(workOrderId!, report, assetId);
       await dispatchServiceAppointment(sa.Id, report);
 
       const saIrecs = await assertIntegrationSuccess(sa.Id, 1, report, 'Verificar Integration_Request (ServiceAppointment)');

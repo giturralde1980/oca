@@ -4,9 +4,45 @@ import { buildOpportunityIndustria } from '../fixtures/opportunity.industria.fix
 import { buildQuoteIndustria }        from '../fixtures/quote.industria.fixture';
 import { TestReport }                 from '../report.helper';
 import { patchOrderActivity, queryOrderByQuoteId } from './order.steps';
-
-const INDUSTRIA_ASSET_ID = '02iJW000000ATVpYAO';
+import { sfQuery }                    from '../salesforce-query.helper';
 import pactum from 'pactum';
+
+// TAIKA account (001JW000007t8vWYAQ) — assets owned by this account keep the SA's
+// titularId as TAIKA, which has the delegacionId mapping in Mobility.
+const TAIKA_ACCOUNT_ID = '001JW000007t8vWYAQ';
+
+/**
+ * Returns the first TAIKA-owned asset that is not currently blocked by a Dispatched
+ * ServiceAppointment. Salesforce prevents modifying an Asset linked to a Dispatched SA,
+ * so each test run must pick one that's free.
+ *
+ * Uses two queries because SOQL does not support nested semi-joins:
+ *   1. Get AssetIds of WorkOrders that have Dispatched SAs.
+ *   2. Get TAIKA assets not in that exclusion set.
+ */
+export async function queryAvailableIndustriaAsset(): Promise<string> {
+  const blockedWOs = await sfQuery.query<{ AssetId: string }>(
+    `SELECT AssetId FROM WorkOrder
+     WHERE ParentWorkOrderId = null
+       AND AssetId != null
+       AND Id IN (SELECT ParentRecordId FROM ServiceAppointment WHERE Status = 'Dispatched')`,
+  );
+  const blockedIds = [...new Set(blockedWOs.map(r => r.AssetId))];
+
+  const exclusion = blockedIds.length > 0
+    ? `AND Id NOT IN (${blockedIds.map(id => `'${id}'`).join(',')})`
+    : '';
+
+  const [asset] = await sfQuery.query<{ Id: string }>(
+    `SELECT Id FROM Asset
+     WHERE AccountId = '${TAIKA_ACCOUNT_ID}'
+       AND CAERequired__c != null
+       ${exclusion}
+     LIMIT 1`,
+  );
+  if (!asset) throw new Error('No available Industria asset found (all TAIKA assets are locked by Dispatched SAs)');
+  return asset.Id;
+}
 import {
   SourceLineItem,
   IntegrationRequest,
@@ -80,20 +116,23 @@ export async function patchIndustriaOrderActivity(orderId: string, report: TestR
  * Polls for the Order every intervalMs and patches Activity as soon as it appears.
  * Run this concurrently with changeQuoteStatus('won') so the patch arrives before
  * SAP fires (~7s after Order creation), even though the won PATCH blocks for ~40s.
+ * Returns both the orderId and the resolved assetId so the same asset is reused
+ * when assigning the WorkOrder.
  */
 export async function waitAndPatchIndustriaOrderActivity(
   quoteId:     string,
   report:      TestReport,
   intervalMs   = 500,
   maxAttempts  = 120,
-): Promise<string> {
+): Promise<{ orderId: string; assetId: string }> {
+  const assetId = await queryAvailableIndustriaAsset();
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise(r => setTimeout(r, intervalMs));
     const orderId = await queryOrderByQuoteId(quoteId);
     if (orderId) {
-      await patchOrderActivity(orderId, '6100', '6100_1', INDUSTRIA_ASSET_ID);
-      report.step('Parchear Activity en Order', { 'Order Id': orderId, 'Activity__c': '6100', 'Actividad_LN__c': '6100_1', 'Activo__c': INDUSTRIA_ASSET_ID });
-      return orderId;
+      await patchOrderActivity(orderId, '6100', '6100_1', assetId);
+      report.step('Parchear Activity en Order', { 'Order Id': orderId, 'Activity__c': '6100', 'Actividad_LN__c': '6100_1', 'Activo__c': assetId });
+      return { orderId, assetId };
     }
   }
   throw new Error(`Order not found within ${(maxAttempts * intervalMs) / 1000}s for Quote ${quoteId}`);

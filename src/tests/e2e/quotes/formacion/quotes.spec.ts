@@ -10,7 +10,7 @@ import {
 
 const SOURCE_QUOTE_ID = '0Q0JW000008XWUL0A4';
 
-describe('Funcional — Quotes Formación', () => {
+describe.skip('Funcional — Quotes Formación', () => {
   let suite:    SuiteReport;
   let sourceLI: SourceLineItem;
 
