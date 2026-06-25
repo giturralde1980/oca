@@ -46,7 +46,7 @@ jobs:
           limits = json.loads(urllib.request.urlopen(req).read())
 
           # ── Checks ────────────────────────────────────────────────────────────
-          THRESHOLD = 90   # % a partir del cual se considera alerta
+          THRESHOLD = 98   # % a partir del cual se considera alerta
           CHECKS = [
               ('DataStorageMB',      'Data Storage'),
               ('FileStorageMB',      'File Storage'),

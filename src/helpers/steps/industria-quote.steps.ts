@@ -23,8 +23,7 @@ const TAIKA_ACCOUNT_ID = '001JW000007t8vWYAQ';
 export async function queryAvailableIndustriaAsset(): Promise<string> {
   const blockedWOs = await sfQuery.query<{ AssetId: string }>(
     `SELECT AssetId FROM WorkOrder
-     WHERE ParentWorkOrderId = null
-       AND AssetId != null
+     WHERE AssetId != null
        AND Id IN (SELECT ParentRecordId FROM ServiceAppointment WHERE Status = 'Dispatched')`,
   );
   const blockedIds = [...new Set(blockedWOs.map(r => r.AssetId))];
