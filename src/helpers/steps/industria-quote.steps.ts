@@ -21,26 +21,29 @@ const TAIKA_ACCOUNT_ID = '001JW000007t8vWYAQ';
  *   2. Get TAIKA assets not in that exclusion set.
  */
 export async function queryAvailableIndustriaAsset(): Promise<string> {
-  const blockedWOs = await sfQuery.query<{ AssetId: string }>(
-    `SELECT AssetId FROM WorkOrder
-     WHERE AssetId != null
-       AND Id IN (SELECT ParentRecordId FROM ServiceAppointment WHERE Status = 'Dispatched')`,
-  );
-  const blockedIds = [...new Set(blockedWOs.map(r => r.AssetId))];
-
-  const exclusion = blockedIds.length > 0
-    ? `AND Id NOT IN (${blockedIds.map(id => `'${id}'`).join(',')})`
-    : '';
-
-  const [asset] = await sfQuery.query<{ Id: string }>(
+  // Get all TAIKA assets with CAERequired__c set
+  const candidates = await sfQuery.query<{ Id: string }>(
     `SELECT Id FROM Asset
      WHERE AccountId = '${TAIKA_ACCOUNT_ID}'
-       AND CAERequired__c != null
-       ${exclusion}
-     LIMIT 1`,
+       AND CAERequired__c != null`,
   );
-  if (!asset) throw new Error('No available Industria asset found (all TAIKA assets are locked by Dispatched SAs)');
-  return asset.Id;
+  if (candidates.length === 0) throw new Error('No TAIKA assets with CAERequired__c found');
+
+  const candidateIds = candidates.map(a => `'${a.Id}'`).join(',');
+
+  // Single semi-join: WorkOrders using one of our TAIKA assets that have a Dispatched SA.
+  // Scoping the outer query to our 6 assets avoids building a huge IN clause from all org SAs.
+  const blockedWOs = await sfQuery.query<{ AssetId: string }>(
+    `SELECT AssetId FROM WorkOrder
+     WHERE AssetId IN (${candidateIds})
+       AND AssetId != null
+       AND Id IN (SELECT ParentRecordId FROM ServiceAppointment WHERE Status = 'Dispatched')`,
+  );
+  const blockedIds = new Set(blockedWOs.map(r => r.AssetId));
+
+  const available = candidates.find(a => !blockedIds.has(a.Id));
+  if (!available) throw new Error('No available Industria asset found (all TAIKA assets are locked by Dispatched SAs)');
+  return available.Id;
 }
 import {
   SourceLineItem,
