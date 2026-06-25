@@ -78,6 +78,43 @@ jobs:
             --verbose \
             --forceExit
 
+      # ── Job Summary visible en la página del run ─────────────────────────────
+      - name: Write job summary
+        if: always()
+        run: |
+          REPORT=$(ls reports/e2e_20*.html 2>/dev/null | head -1 || echo "")
+          STATUS="${{ job.status }}"
+          ICON=$([[ "$STATUS" == "success" ]] && echo "✅" || echo "❌")
+          ENV="${{ steps.ctx.outputs.test_env }}"
+          PATTERN="${{ steps.ctx.outputs.test_pattern }}"
+
+          {
+            echo "## ${ICON} E2E Salesforce QA — run \#${{ github.run_number }}"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| **Entorno** | \`${ENV}\` |"
+            echo "| **Patrón** | \`${PATTERN}\` |"
+            echo "| **Estado** | **${STATUS}** |"
+            echo "| **Reporte** | Descarga el artefacto \`e2e-report-${ENV}-run${{ github.run_number }}\` al final de esta página |"
+            echo ""
+            if [[ -f "$REPORT" ]]; then
+              echo "> Reporte generado: \`$(basename $REPORT)\`"
+            else
+              echo "> ⚠ No se encontró reporte HTML combinado."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ── Artefacto con el reporte combinado (se borra a los 3 días) ──────────────
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report-${{ steps.ctx.outputs.test_env }}-run${{ github.run_number }}
+          path: reports/e2e_20*.html
+          retention-days: 3
+          if-no-files-found: warn
+
       # ── Sube el reporte HTML a Google Drive ───────────────────────────────────
       # Secrets necesarios (una sola vez en github.com/giturralde1980/oca/settings/secrets/actions):
       #
