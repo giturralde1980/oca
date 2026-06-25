@@ -59,21 +59,18 @@ jobs:
           echo "test_env=${TEST_ENV}"     >> $GITHUB_OUTPUT
           echo "test_pattern=${TEST_PATTERN}" >> $GITHUB_OUTPUT
 
-      # Escribe el fichero .env.<env> desde los secrets del repo
-      # Los valores de los secrets se pasan como env vars para evitar
-      # problemas con caracteres especiales en heredocs
+      # Escribe el fichero .env.<env> desde los secrets del repo.
+      # Usa printf con %s para que caracteres especiales (=, +, .) no sean interpretados.
       - name: Write .env file
         env:
-          SF_BASE_URL:    ${{ secrets.SF_BASE_URL }}
-          SF_CLIENT_ID:   ${{ secrets.SF_CLIENT_ID }}
+          SF_BASE_URL:      ${{ secrets.SF_BASE_URL }}
+          SF_CLIENT_ID:     ${{ secrets.SF_CLIENT_ID }}
           SF_CLIENT_SECRET: ${{ secrets.SF_CLIENT_SECRET }}
         run: |
-          {
-            echo "SF_BASE_URL=${SF_BASE_URL}"
-            echo "SF_CLIENT_ID=${SF_CLIENT_ID}"
-            echo "SF_CLIENT_SECRET=${SF_CLIENT_SECRET}"
-            echo "SF_API_VERSION=v59.0"
-          } > .env.${{ steps.ctx.outputs.test_env }}
+          printf 'SF_BASE_URL=%s\nSF_CLIENT_ID=%s\nSF_CLIENT_SECRET=%s\nSF_API_VERSION=v59.0\n' \
+            "${SF_BASE_URL}" "${SF_CLIENT_ID}" "${SF_CLIENT_SECRET}" \
+            > .env.${{ steps.ctx.outputs.test_env }}
+          echo "→ .env.${{ steps.ctx.outputs.test_env }} escrito ($(wc -c < .env.${{ steps.ctx.outputs.test_env }}) bytes, SF_CLIENT_ID length=$(echo -n "${SF_CLIENT_ID}" | wc -c))"
 
       - name: Run E2E tests
         env:
