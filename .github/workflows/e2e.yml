@@ -1,0 +1,93 @@
+name: E2E Salesforce QA
+
+# ── Trigger 1: manual desde GitHub UI ────────────────────────────────────────
+# ── Trigger 2: POST desde Postman / cualquier cliente HTTP ───────────────────
+#
+#   POST https://api.github.com/repos/giturralde1980/oca/dispatches
+#   Authorization: Bearer <GITHUB_PAT>
+#   Content-Type: application/json
+#
+#   {
+#     "event_type": "run-e2e-tests",
+#     "client_payload": {
+#       "test_env":     "qa",
+#       "test_pattern": "quotes/"
+#     }
+#   }
+on:
+  workflow_dispatch:
+    inputs:
+      test_env:
+        description: 'Entorno a testear'
+        required: true
+        default: 'qa'
+        type: choice
+        options: [qa, int, stg, prd]
+      test_pattern:
+        description: 'Patrón Jest (ej: quotes/, quotes/industria)'
+        required: false
+        default: 'quotes/'
+
+  repository_dispatch:
+    types: [run-e2e-tests]
+
+jobs:
+  e2e:
+    name: E2E · ${{ github.event.inputs.test_env || github.event.client_payload.test_env || 'qa' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Resuelve los inputs independientemente de cómo se lanzó el workflow
+      - name: Resolve inputs
+        id: ctx
+        run: |
+          TEST_ENV="${{ github.event.inputs.test_env || github.event.client_payload.test_env || 'qa' }}"
+          TEST_PATTERN="${{ github.event.inputs.test_pattern || github.event.client_payload.test_pattern || 'quotes/' }}"
+          echo "test_env=${TEST_ENV}"     >> $GITHUB_OUTPUT
+          echo "test_pattern=${TEST_PATTERN}" >> $GITHUB_OUTPUT
+
+      # Escribe el fichero .env.<env> desde los secrets del repo
+      # Los valores de los secrets se pasan como env vars para evitar
+      # problemas con caracteres especiales en heredocs
+      - name: Write .env file
+        env:
+          SF_BASE_URL:    ${{ secrets.SF_BASE_URL }}
+          SF_CLIENT_ID:   ${{ secrets.SF_CLIENT_ID }}
+          SF_CLIENT_SECRET: ${{ secrets.SF_CLIENT_SECRET }}
+        run: |
+          {
+            echo "SF_BASE_URL=${SF_BASE_URL}"
+            echo "SF_CLIENT_ID=${SF_CLIENT_ID}"
+            echo "SF_CLIENT_SECRET=${SF_CLIENT_SECRET}"
+            echo "SF_API_VERSION=v59.0"
+          } > .env.${{ steps.ctx.outputs.test_env }}
+
+      - name: Run E2E tests
+        env:
+          TEST_ENV: ${{ steps.ctx.outputs.test_env }}
+        run: |
+          npx jest \
+            --testPathPatterns "${{ steps.ctx.outputs.test_pattern }}" \
+            --verbose \
+            --forceExit
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report-${{ steps.ctx.outputs.test_env }}-run${{ github.run_number }}
+          path: reports/
+          retention-days: 30
