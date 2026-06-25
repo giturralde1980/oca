@@ -63,7 +63,7 @@ describe('Funcional — Quotes Industria', () => {
       console.log(`[e2e] SA Id:        ${sa.Id}  (Status: ${sa.Status})`);
 
       await scheduleServiceAppointment(sa.Id, report);
-      await assignTechnicianToWorkOrder(workOrderId!, report, '02iJW000007GBUvYAO');
+      await assignTechnicianToWorkOrder(workOrderId!, report, '02iJW000000ATVpYAO');
       await dispatchServiceAppointment(sa.Id, report);
 
       const saIrecs = await assertIntegrationSuccess(sa.Id, 1, report, 'Verificar Integration_Request (ServiceAppointment)');

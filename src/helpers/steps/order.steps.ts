@@ -194,6 +194,7 @@ export async function scheduleServiceAppointment(
     SchedStartTime:                schedStartTime,
     SchedEndTime:                  schedEndTime,
     AssignedInternalTechnician__c: TECHNICIAN_ID,
+    DT_StartMovility__c:           schedStartTime,
   });
 
   report.step(

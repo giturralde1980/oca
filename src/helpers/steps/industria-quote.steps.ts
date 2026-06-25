@@ -5,7 +5,7 @@ import { buildQuoteIndustria }        from '../fixtures/quote.industria.fixture'
 import { TestReport }                 from '../report.helper';
 import { patchOrderActivity, queryOrderByQuoteId } from './order.steps';
 
-const INDUSTRIA_ASSET_ID = '02iJW000007GBUvYAO';
+const INDUSTRIA_ASSET_ID = '02iJW000000ATVpYAO';
 import pactum from 'pactum';
 import {
   SourceLineItem,
