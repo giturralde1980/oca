@@ -206,15 +206,3 @@ export async function scheduleServiceAppointment(
   return { schedStartTime, schedEndTime };
 }
 
-/** Assigns the technician to the ServiceAppointment via the Technician__c field. */
-export async function assignTechnicianToServiceAppointment(
-  saId:   string,
-  report: TestReport,
-): Promise<void> {
-  await updateRecord('ServiceAppointment', saId, { Technician__c: TECHNICIAN_ID });
-  report.step(
-    'Asignar Technician__c en ServiceAppointment',
-    { 'SA Id': saId, 'Technician__c': TECHNICIAN_ID },
-    'ok',
-  );
-}

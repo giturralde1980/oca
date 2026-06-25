@@ -1,6 +1,6 @@
 import { setupPactum }             from '../../../../helpers/request.helper';
 import { TestReport, SuiteReport } from '../../../../helpers/report.helper';
-import { verifyOrderSyncedByOrderId, assertServiceAppointmentForOrder, scheduleServiceAppointment, assignTechnicianToServiceAppointment } from '../../../../helpers/steps/order.steps';
+import { verifyOrderSyncedByOrderId, assertServiceAppointmentForOrder, scheduleServiceAppointment } from '../../../../helpers/steps/order.steps';
 import {
   getSourceLineItem,
   setupIndustriaQuote,
@@ -57,7 +57,6 @@ describe('Funcional — Quotes Industria', () => {
       expect(sa.Status).toBe('pending_scheduling');
 
       await scheduleServiceAppointment(sa.Id, report);
-      await assignTechnicianToServiceAppointment(sa.Id, report);
 
       expect(oppId).toBeTruthy();
       expect(quoteId).toBeTruthy();
