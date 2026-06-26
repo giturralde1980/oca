@@ -22,9 +22,10 @@ export interface SourceLineItem {
 }
 
 export interface IntegrationRequest {
-  Id:              string;
-  SF_Record_Id__c: string;
-  Status__c:       string;
+  Id:                    string;
+  SF_Record_Id__c:       string;
+  Status__c:             string;
+  SynchronizationError__c: string | null;
 }
 
 export async function getSourceLineItem(sourceQuoteId: string): Promise<SourceLineItem> {
@@ -69,28 +70,40 @@ export async function assertIntegrationSuccess(
   minCount:    number,
   report:      TestReport,
   label:       string,
-  maxAttempts = 24,
-  delayMs     = 5000,
+  maxAttempts = 5,
+  delayMs     = 20000,
 ): Promise<IntegrationRequest[]> {
   let records: IntegrationRequest[] = [];
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     records = await sfQuery.query<IntegrationRequest>(
-      `SELECT Id, SF_Record_Id__c, Status__c, CreatedDate
+      `SELECT Id, SF_Record_Id__c, Status__c, SynchronizationError__c, CreatedDate
        FROM Integration_Request__c
        WHERE SF_Record_Id__c = '${recordId}'
        ORDER BY CreatedDate DESC`
     );
-    if (records.length >= minCount && records[0]?.Status__c === 'success') break;
+    const top = records[0];
+    const isSuccess = records.length >= minCount
+      && top?.Status__c === 'success'
+      && !top?.SynchronizationError__c;
+    if (isSuccess) break;
     console.log(`[e2e]   ${label} — intento ${attempt}/${maxAttempts}, encontrados: ${records.length}`);
     await new Promise(r => setTimeout(r, delayMs));
   }
 
   const latest = records[0];
+  const syncError = latest?.SynchronizationError__c || null;
+  const passed = records.length >= minCount && latest?.Status__c === 'success' && !syncError;
   report.step(
     label,
-    { 'Total registros': String(records.length), 'Integration Request Id': latest?.Id, 'SF_Record_Id__c': recordId, 'Status__c': latest?.Status__c },
-    records.length >= minCount && latest?.Status__c === 'success' ? 'ok' : 'fail',
+    {
+      'Total registros': String(records.length),
+      'Integration Request Id': latest?.Id,
+      'SF_Record_Id__c': recordId,
+      'Status__c': latest?.Status__c,
+      ...(syncError ? { 'SynchronizationError__c': syncError } : {}),
+    },
+    passed ? 'ok' : 'fail',
   );
 
   return records;
@@ -99,8 +112,8 @@ export async function assertIntegrationSuccess(
 export async function assertSAPReferenceOrderNumber(
   quoteId:     string,
   report:      TestReport,
-  maxAttempts = 24,
-  delayMs     = 5000,
+  maxAttempts = 5,
+  delayMs     = 20000,
 ): Promise<string> {
   let sapRef = '';
 

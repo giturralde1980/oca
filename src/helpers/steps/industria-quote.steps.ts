@@ -21,11 +21,16 @@ const TAIKA_ACCOUNT_ID = '001JW000007t8vWYAQ';
  *   2. Get TAIKA assets not in that exclusion set.
  */
 export async function queryAvailableIndustriaAsset(): Promise<string> {
-  // Get all TAIKA assets with CAERequired__c set
+  // Get TAIKA assets with all required address fields filled (validation rule rejects dispatch otherwise)
   const candidates = await sfQuery.query<{ Id: string }>(
     `SELECT Id FROM Asset
      WHERE AccountId = '${TAIKA_ACCOUNT_ID}'
-       AND CAERequired__c != null`,
+       AND CAERequired__c != null
+       AND Address__c  != null
+       AND City__c     != null
+       AND PostalCode__c != null
+       AND Country__c  != null
+       AND Province__c != null`,
   );
   if (candidates.length === 0) throw new Error('No TAIKA assets with CAERequired__c found');
 

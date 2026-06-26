@@ -1,6 +1,6 @@
 import { setupPactum }             from '../../../../helpers/request.helper';
 import { TestReport, SuiteReport } from '../../../../helpers/report.helper';
-import { verifyOrderSyncedByOrderId, queryWorkOrderByOrderId, assertServiceAppointmentForOrder, scheduleServiceAppointment, dispatchServiceAppointment, assignTechnicianToWorkOrder } from '../../../../helpers/steps/order.steps';
+import { verifyOrderSyncedByOrderId, queryWorkOrderByOrderId, assertServiceAppointmentForOrder, scheduleServiceAppointment, dispatchServiceAppointment, assignTechnicianToWorkOrder, releaseServiceAppointment } from '../../../../helpers/steps/order.steps';
 import {
   getSourceLineItem,
   setupIndustriaQuote,
@@ -29,8 +29,8 @@ describe('Funcional — Quotes Industria', () => {
     console.log(`\n[suite] Reporte generado: ${reportPath}`);
   });
 
-  it('[e2e] Industria → Won → Order SAP', async () => {
-    const report = new TestReport('E2E Industria — Won → Order SAP');
+  it('[e2e] Industria → Won → Order SAP → Service Appointment → Dispatched', async () => {
+    const report = new TestReport('E2E Industria — Won → Order SAP → Service Appointment → Dispatched');
     try {
       const { oppId, quoteId, lineItemId } = await setupIndustriaQuote(sourceLI, report);
 
@@ -69,6 +69,9 @@ describe('Funcional — Quotes Industria', () => {
       const saIrecs = await assertIntegrationSuccess(sa.Id, 1, report, 'Verificar Integration_Request (ServiceAppointment)');
       expect(saIrecs[0].Status__c).toBe('success');
       console.log(`[e2e] Technician__c + Activo__c asignados en WorkOrder ${workOrderId}`);
+
+      // Free the asset: move SA out of 'dispatched' so next run can reuse it
+      await releaseServiceAppointment(sa.Id);
 
       expect(oppId).toBeTruthy();
       expect(quoteId).toBeTruthy();

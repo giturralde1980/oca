@@ -219,6 +219,17 @@ export async function dispatchServiceAppointment(
   report.step('Despachar ServiceAppointment', { 'SA Id': saId, 'Status': 'Dispatched' }, 'ok');
 }
 
+/**
+ * Closes the SA (dispatched → in_progress → 5) so its linked Asset is no longer
+ * blocked by SF validation rules. Without this, each test run leaves the asset
+ * permanently locked and subsequent runs fail when assigning the same asset.
+ * Status '5' is the terminal/completed state in this org (no English label).
+ */
+export async function releaseServiceAppointment(saId: string): Promise<void> {
+  await updateRecord('ServiceAppointment', saId, { Status: 'in_progress' });
+  await updateRecord('ServiceAppointment', saId, { Status: '5' });
+}
+
 /** Sets Technician__c (and optionally Activo__c) on the WorkOrder. */
 export async function assignTechnicianToWorkOrder(
   workOrderId: string,
