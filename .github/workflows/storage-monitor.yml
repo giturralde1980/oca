@@ -14,6 +14,7 @@ jobs:
 
     steps:
       - name: Check Salesforce storage limits
+        id: check-storage
         env:
           SF_BASE_URL:      ${{ secrets.SF_BASE_URL }}
           SF_CLIENT_ID:     ${{ secrets.SF_CLIENT_ID }}
@@ -117,3 +118,31 @@ jobs:
           else:
               print(f'OK — todos los tipos por debajo del {THRESHOLD}%.')
           PYEOF
+
+      - name: Resolve email recipients
+        id: recipients
+        if: steps.check-storage.conclusion == 'failure'
+        run: |
+          DEFAULT="${{ secrets.MAIL_TO }}"
+          FALLBACK="test@test.com"
+          echo "to=${DEFAULT:-$FALLBACK}" >> $GITHUB_OUTPUT
+
+      - name: Send report by email
+        if: steps.check-storage.conclusion == 'failure'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_USER }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          to: ${{ steps.recipients.outputs.to }}
+          from: ${{ secrets.GMAIL_USER }}
+          subject: "[ALERTA] Salesforce Storage >= 98% - Run #${{ github.run_number }}"
+          body: |
+            ALERTA: El almacenamiento de Salesforce superó el umbral del 98%.
+
+            Workflow run: #${{ github.run_number }}
+            Triggered by: ${{ github.actor }}
+
+            Revisar el Job Summary del workflow para ver el detalle por tipo de almacenamiento.
