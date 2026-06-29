@@ -146,3 +146,14 @@ jobs:
             Triggered by: ${{ github.actor }}
 
             Revisar el Job Summary del workflow para ver el detalle por tipo de almacenamiento.
+
+      # ── Purga de LogEntry__c > 15 días cuando el storage está al límite ────────
+      # Lanza OCA_LogBatchPurger en tramos diarios (máx. 3 jobs en paralelo).
+      # Si hay mucho backlog, continúa en la siguiente ejecución programada.
+      - name: Purge old LogEntry__c (>15 days)
+        if: steps.check-storage.conclusion == 'failure'
+        env:
+          SF_BASE_URL:      ${{ secrets.SF_BASE_URL }}
+          SF_CLIENT_ID:     ${{ secrets.SF_CLIENT_ID }}
+          SF_CLIENT_SECRET: ${{ secrets.SF_CLIENT_SECRET }}
+        run: python3 scripts/sf_purge_logs.py
