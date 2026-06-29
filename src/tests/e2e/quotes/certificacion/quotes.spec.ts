@@ -29,7 +29,7 @@ describe('Funcional — Quotes IDI', () => {
     console.log(`\n[suite] Reporte generado: ${reportPath}`);
   });
 
-  it('[e2e] IDI → Won → Firmada', async () => {
+  it('[e2e] @C106 IDI → Won → Firmada', async () => {
     const report = new TestReport('E2E IDI — Won → Firmada');
     try {
       const { oppId, quoteId, lineItemId } = await setupIDIQuote(sourceLI, report);
@@ -62,7 +62,7 @@ describe('Funcional — Quotes IDI', () => {
     }
   }, 360000);
 
-  it('[e2e] IDI → Generada → Won → Rechazada', async () => {
+  it('[e2e] @C107 IDI → Generada → Won → Rechazada', async () => {
     const report = new TestReport('E2E IDI — Won → Rechazada');
     try {
       const { oppId, quoteId, lineItemId } = await setupIDIQuote(sourceLI, report);
@@ -88,7 +88,7 @@ describe('Funcional — Quotes IDI', () => {
     }
   }, 360000);
 
-  it('[e2e] IDI → Won → Cancelada', async () => {
+  it('[e2e] @C108 IDI → Won → Cancelada', async () => {
     const report = new TestReport('E2E IDI — Won → Cancelada');
     try {
       const { oppId, quoteId, lineItemId } = await setupIDIQuote(sourceLI, report);

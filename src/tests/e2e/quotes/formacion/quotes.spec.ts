@@ -26,7 +26,7 @@ describe.skip('Funcional — Quotes Formación', () => {
     console.log(`\n[suite] Reporte generado: ${reportPath}`);
   });
 
-  it('[e2e] Formación → Presentada → Won → Aceptada', async () => {
+  it.skip('[e2e] @C131 Formación → Presentada → Won → Aceptada', async () => {
     const report = new TestReport('E2E Formación — Won → Aceptada');
     try {
       const { oppId, quoteId, lineItemId } = await setupFormacionQuote(sourceLI, report);
@@ -46,7 +46,7 @@ describe.skip('Funcional — Quotes Formación', () => {
     }
   }, 180000);
 
-  it('[e2e] Formación → Presentada → Won → Rechazada', async () => {
+  it.skip('[e2e] @C132 Formación → Presentada → Won → Rechazada', async () => {
     const report = new TestReport('E2E Formación — Won → Rechazada');
     try {
       const { oppId, quoteId, lineItemId } = await setupFormacionQuote(sourceLI, report);

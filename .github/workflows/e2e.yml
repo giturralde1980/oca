@@ -76,7 +76,24 @@ jobs:
           npx jest \
             --testPathPatterns "${{ steps.ctx.outputs.test_pattern }}" \
             --verbose \
-            --forceExit
+            --forceExit \
+            --json \
+            --outputFile=reports/jest-results.json
+
+      - name: Report results to TestRail
+        if: always()
+        env:
+          TEST_ENV:          ${{ steps.ctx.outputs.test_env }}
+          TESTRAIL_URL:      ${{ secrets.TESTRAIL_URL }}
+          TESTRAIL_USER:     ${{ secrets.TESTRAIL_USER }}
+          TESTRAIL_API_KEY:  ${{ secrets.TESTRAIL_API_KEY }}
+        run: |
+          if [[ -z "${TESTRAIL_URL}" ]]; then
+            echo "⚠ TESTRAIL_URL no configurado — omitiendo reporte a TestRail"
+            exit 0
+          fi
+          npx ts-node --project tsconfig.scripts.json \
+            scripts/testrail-report.ts reports/jest-results.json
 
       # ── Job Summary visible en la página del run ─────────────────────────────
       - name: Write job summary
