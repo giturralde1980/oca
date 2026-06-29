@@ -150,7 +150,7 @@ jobs:
       # Lanza OCA_LogBatchPurger en tramos diarios (máx. 3 jobs en paralelo).
       # Si hay mucho backlog, continúa en la siguiente ejecución programada.
       - name: Purge old LogEntry__c (>15 days)
-        if: steps.check-storage.conclusion == 'failure'
+        if: failure() && steps.check-storage.conclusion == 'failure'
         env:
           SF_BASE_URL:      ${{ secrets.SF_BASE_URL }}
           SF_CLIENT_ID:     ${{ secrets.SF_CLIENT_ID }}
