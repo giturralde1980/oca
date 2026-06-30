@@ -30,7 +30,7 @@ const SUITE_ID     = 6;
 const SECTION_ID   = 74;  // Transversal > e2e
 const TEST_ENV     = process.env.TEST_ENV ?? 'qa';
 
-const TR_STATUS: Record<string, number> = { passed: 7, failed: 8, pending: 4 };
+const TR_STATUS: Record<string, number> = { passed: 1, failed: 5, pending: 4 };
 
 if (!TESTRAIL_URL || !USER || !API_KEY) {
   console.error('❌  Faltan variables: TESTRAIL_URL, TESTRAIL_USER, TESTRAIL_API_KEY');

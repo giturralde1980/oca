@@ -114,11 +114,17 @@ jobs:
               print(f'{label:<25} {used:>12} {maximum:>12} {pct:>8}{flag}')
           print()
 
+          github_output = os.environ.get('GITHUB_OUTPUT', '')
           if alerts:
-              print(f'ALERTA: almacenamiento >= {THRESHOLD}%')
-              sys.exit(1)
+              print(f'ALERTA: almacenamiento >= {THRESHOLD}% — lanzando purga')
+              if github_output:
+                  with open(github_output, 'a') as f:
+                      f.write('alert=true\n')
           else:
               print(f'OK — todos los tipos por debajo del {THRESHOLD}%.')
+              if github_output:
+                  with open(github_output, 'a') as f:
+                      f.write('alert=false\n')
           PYEOF
 
       # - name: Resolve email recipients
@@ -153,7 +159,7 @@ jobs:
       # Lanza OCA_LogBatchPurger en tramos diarios (máx. 3 jobs en paralelo).
       # Si hay mucho backlog, continúa en la siguiente ejecución programada.
       - name: Purge old LogEntry__c (>15 days)
-        if: failure() && steps.check-storage.conclusion == 'failure'
+        if: steps.check-storage.outputs.alert == 'true'
         env:
           SF_BASE_URL:      ${{ secrets.SF_BASE_URL }}
           SF_CLIENT_ID:     ${{ secrets.SF_CLIENT_ID }}
