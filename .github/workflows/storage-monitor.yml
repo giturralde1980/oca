@@ -2,7 +2,7 @@ name: Salesforce Storage Monitor
 
 on:
   schedule:
-    - cron: '0 6 * * *'   # 06:00 UTC diario
+    - cron: '0 4 * * *'   # 04:00 UTC diario (06:00 España verano)
   workflow_dispatch:        # lanzamiento manual desde GitHub UI
 
 jobs:

@@ -30,7 +30,7 @@ const SUITE_ID     = 6;
 const SECTION_ID   = 74;  // Transversal > e2e
 const TEST_ENV     = process.env.TEST_ENV ?? 'qa';
 
-const TR_STATUS: Record<string, number> = { passed: 1, failed: 5, pending: 4 };
+const TR_STATUS: Record<string, number> = { passed: 7, failed: 8, pending: 4 };
 
 if (!TESTRAIL_URL || !USER || !API_KEY) {
   console.error('❌  Faltan variables: TESTRAIL_URL, TESTRAIL_USER, TESTRAIL_API_KEY');
@@ -144,8 +144,16 @@ async function main(): Promise<void> {
     if (t.status === 'pending' && !hasTag) continue;
 
     const caseId     = await getOrCreateCase(existingCases, titleNoPrefix);
-    const icon       = t.status === 'passed' ? '✅' : t.status === 'pending' ? '⏭' : '❌';
     const cleanTitle = stripTags(titleNoPrefix);
+
+    // pending = not yet implemented — include in run but post no result (stays Untested)
+    if (t.status === 'pending') {
+      console.log(`  ⏭ C${caseId} — ${cleanTitle} → untested (skipped intencional)`);
+      toReport.push({ caseId, status: 'pending', error: undefined });
+      continue;
+    }
+
+    const icon = t.status === 'passed' ? '✅' : '❌';
     console.log(`  ${icon} C${caseId} — ${cleanTitle} → ${t.status}`);
     toReport.push({ caseId, status: t.status, error: t.failureMessages?.[0]?.slice(0, 1000) });
   }
@@ -164,7 +172,7 @@ async function main(): Promise<void> {
   // Post results
   for (const r of toReport) {
     await tr('POST', `add_result_for_case/${run.id}/${r.caseId}`, {
-      status_id: TR_STATUS[r.status] ?? 5,
+      status_id: TR_STATUS[r.status] ?? 8,
       comment:   r.error,
     });
   }
