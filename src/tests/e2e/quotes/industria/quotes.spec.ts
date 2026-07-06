@@ -29,7 +29,7 @@ describe('Funcional — Quotes Industria', () => {
     console.log(`\n[suite] Reporte generado: ${reportPath}`);
   });
 
-  it('[e2e] @C109 Industria → Won → Order SAP → Service Appointment → Dispatched', async () => {
+  it('[e2e] @C1314 Industria → Won → Order SAP → Service Appointment → Dispatched', async () => {
     const report = new TestReport('E2E Industria — Won → Order SAP → Service Appointment → Dispatched');
     try {
       const { oppId, quoteId, lineItemId } = await setupIndustriaQuote(sourceLI, report);

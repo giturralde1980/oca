@@ -40,7 +40,7 @@ export async function setupIDIQuote(sourceLI: SourceLineItem, report: TestReport
     QuoteId:            quoteId,
     PricebookEntryId:   sourceLI.PricebookEntryId,
     Quantity:           sourceLI.Quantity         ?? 1,
-    UnitPrice:          sourceLI.UnitPrice        ?? 0,
+    UnitPrice:          sourceLI.SelectedPrice__c ?? 0, // = SelectedPrice__c: sin esto, la validation rule de QuoteLineItem rechaza el gap entre precio de lista y precio seleccionado cuando Discount__c es 0
     SelectedPrice__c:   sourceLI.SelectedPrice__c ?? 0,
     Activity__c:        sourceLI.Activity__c      ?? '',
     Subactivity__c:     sourceLI.Subactivity__c   ?? '',
