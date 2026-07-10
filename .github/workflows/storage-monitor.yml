@@ -155,10 +155,10 @@ jobs:
       #
       #       Revisar el Job Summary del workflow para ver el detalle por tipo de almacenamiento.
 
-      # ── Purga de LogEntry__c > 15 días cuando el storage está al límite ────────
+      # ── Purga de LogEntry__c > 10 días cuando el storage está al límite ────────
       # Lanza OCA_LogBatchPurger en tramos diarios (máx. 3 jobs en paralelo).
       # Si hay mucho backlog, continúa en la siguiente ejecución programada.
-      - name: Purge old LogEntry__c (>15 days)
+      - name: Purge old LogEntry__c (>10 days)
         if: steps.check-storage.outputs.alert == 'true'
         env:
           SF_BASE_URL:      ${{ secrets.SF_BASE_URL }}
