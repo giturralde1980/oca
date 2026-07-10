@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Purges LogEntry__c records older than 15 days using OCA_LogBatchPurger.
+Purges LogEntry__c records older than 10 days using OCA_LogBatchPurger.
 
 Strategy:
   - Finds the oldest LogEntry__c record to know the full range to clean.
@@ -19,7 +19,7 @@ SF_CLIENT_ID     = os.environ['SF_CLIENT_ID']
 SF_CLIENT_SECRET = os.environ['SF_CLIENT_SECRET']
 SUMMARY_FILE     = os.environ.get('GITHUB_STEP_SUMMARY', '')
 SF_API_VERSION   = 'v59.0'
-KEEP_DAYS        = 15   # keep logs from last N days
+KEEP_DAYS        = 10   # keep logs from last N days
 MAX_PARALLEL     = 3    # max concurrent batch jobs
 POLL_INTERVAL    = 30   # seconds between status polls
 MAX_RUNTIME      = 480  # 8 min max — leaves margin before GH Actions 20-min timeout
