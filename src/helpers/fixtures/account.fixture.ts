@@ -2,7 +2,9 @@ import { faker } from '@faker-js/faker';
 import { generateCIF } from './lead.fixture';
 
 export const ACCOUNT_RECORD_TYPES = {
-  BUSINESS: '01209000000ivaNAAQ',
+  BUSINESS:    '01209000000ivaNAAQ', // RT DeveloperName = 'Client' (Cliente)
+  EXPLOTACION: '01209000000ivaMAAQ', // RT DeveloperName = 'Area' (Explotación)
+  DELEGACION:  '01209000000ivaOAAQ', // RT DeveloperName = 'Delegation' (Delegación)
 };
 
 export const DELEGATIONS = {
@@ -38,7 +40,9 @@ export interface AccountFixture {
 }
 
 export function buildAccount(overrides: Partial<AccountFixture> = {}): AccountFixture {
-  const name    = faker.company.name();
+  // Suffix with a random token — Salesforce's Account_Name duplicate rule rejects an
+  // insert outright (400 DUPLICATES_DETECTED) when faker.company.name() repeats a prior run.
+  const name    = `${faker.company.name()} ${faker.string.alphanumeric(6).toUpperCase()}`;
   const address = faker.helpers.arrayElement(REAL_ADDRESSES);
 
   return {
@@ -50,7 +54,7 @@ export function buildAccount(overrides: Partial<AccountFixture> = {}): AccountFi
     Division__c:             'PE - Servicios Técnicos',
     Society__c:              '1200',
     AccountSource:           'Email',
-    InvoiceMail__c:          faker.internet.email({ provider: 'qa-automation.com' }),
+    InvoiceMail__c:          `${faker.string.alphanumeric(10).toLowerCase()}@qa-automation.com`,
     EqualToContactAddres__c: true,
     Phone:                   `6${faker.string.numeric(8)}`,
     ...address,

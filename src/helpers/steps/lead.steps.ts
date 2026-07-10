@@ -43,9 +43,21 @@ export async function deleteLead(id: string): Promise<void> {
     .expectStatus(204);
 }
 
-export async function convertLead(leadId: string): Promise<LeadConversionResult> {
+export interface ConvertLeadOptions {
+  // Opportunity is only generated when the Lead's Division__c maps to an Opportunity
+  // RecordType that accepts that picklist value (confirmed working: Division__c='INS').
+  createOpportunity?: boolean;
+  opportunityName?:   string;
+}
+
+export async function convertLead(leadId: string, options: ConvertLeadOptions = {}): Promise<LeadConversionResult> {
+  const { createOpportunity = false, opportunityName } = options;
   const token      = await getAccessToken();
   const soapVersion = API_VERSION.replace('v', '');
+
+  const opportunityNameTag = createOpportunity
+    ? `<opportunityName>${opportunityName ?? `E2E Opportunity ${Date.now()}`}</opportunityName>`
+    : '';
 
   const soapBody = `<?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
@@ -59,8 +71,9 @@ export async function convertLead(leadId: string): Promise<LeadConversionResult>
     <urn:convertLead>
       <urn:leadConverts>
         <convertedStatus>converted</convertedStatus>
-        <doNotCreateOpportunity>true</doNotCreateOpportunity>
+        <doNotCreateOpportunity>${!createOpportunity}</doNotCreateOpportunity>
         <leadId>${leadId}</leadId>
+        ${opportunityNameTag}
         <overwriteLeadSource>false</overwriteLeadSource>
         <sendNotificationEmail>false</sendNotificationEmail>
       </urn:leadConverts>

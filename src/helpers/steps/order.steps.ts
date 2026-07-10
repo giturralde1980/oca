@@ -133,6 +133,27 @@ export async function queryWorkOrderByOrderId(orderId: string): Promise<string |
   return wo?.Id ?? null;
 }
 
+export async function getWorkOrder(id: string): Promise<Record<string, unknown>> {
+  const wo = await pactum.spec()
+    .get(`/sobjects/WorkOrder/${id}`)
+    .expectStatus(200)
+    .returns('.');
+  return wo as Record<string, unknown>;
+}
+
+// Manually creates an additional ServiceAppointment under the same WorkOrder — only
+// EarliestStartTime and DueDate are required on create. Used to simulate a WorkOrder
+// with appointments in different states (the auto-created SA is always the first one).
+export async function createServiceAppointment(payload: Record<string, unknown>): Promise<string> {
+  const id = await pactum.spec()
+    .post('/sobjects/ServiceAppointment/')
+    .withBody(payload)
+    .withRequestTimeout(30000)
+    .expectStatus(201)
+    .returns('id');
+  return id as string;
+}
+
 interface ServiceAppointmentResult {
   Id:     string;
   Status: string;

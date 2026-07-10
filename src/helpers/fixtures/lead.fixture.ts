@@ -59,9 +59,11 @@ export interface LeadFixture {
 
 export function buildLead(overrides: Partial<LeadFixture> = {}): LeadFixture {
   return {
+    // Random-alphanumeric suffixes on Company/Email avoid Salesforce's Account_Name
+    // duplicate rule (fires on conversion) when faker regenerates the same values.
     LastName:              faker.person.lastName(),
-    Company:               faker.company.name(),
-    Email:                 faker.internet.email({ provider: 'qa-automation.com' }),
+    Company:               `${faker.company.name()} ${faker.string.alphanumeric(6).toUpperCase()}`,
+    Email:                 `${faker.string.alphanumeric(10).toLowerCase()}@qa-automation.com`,
     Phone:                 `6${faker.string.numeric(8)}`,
     ...faker.helpers.arrayElement(REAL_ADDRESSES),
     Country:               'Spain',
