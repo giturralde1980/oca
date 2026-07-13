@@ -809,21 +809,31 @@ describe('Funcional — UAT Base', () => {
 
   });
 
+  // BLOCKED (all 4 below): "parámetro de instalación" = Installation_parameters__c (only
+  // requires Asset__c to create; no direct FK to Order/OrderItem — it relates to the
+  // "paquete" product by matching ProductCode__c prefix, e.g. OrderItem product '50510001MA'
+  // ↔ Installation_parameters__c '50510001C0XX'). That PricebookEntry happens to be the exact
+  // one already curated in org-refs.ts for MA_INS (which also uses OrderType=ZOBR — relevant
+  // for C576 too). Couldn't get a MA_INS Quote to "won" to test the actual generation: hit
+  // "To win a quote it is mandatory to fill in the headline" and tried 6 combinations
+  // (QuoteHeader__c='Titular'/'Prescriptor', Quote.Holder__c and QuoteLineItem.Holder__c with
+  // both the Opportunity account and the asset's real owning account/TAIKA) — none resolved
+  // it. Needs the actual validation rule formula from Setup, not more trial and error.
   describe('Pedido de venta - Parámetros', () => {
     it.skip('[e2e] @C560 Verificar que se generan los parámetros correspondientes al incluir un paquete de productos vinculado a un activo', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota arriba sobre el bloqueo al ganar la Oferta MA/INS.
     });
 
     it.skip('[e2e] @C561 Verificar que se elimina el parámetro de instalación al eliminar un paquete que lo genera, si no está asociado a otro pedido', async () => {
-      // TODO: implementar
+      // TODO: implementar — depende de C560.
     });
 
     it.skip('[e2e] @C562 Verificar que se gestionan correctamente los parámetros de instalación al cambiar el activo de un paquete', async () => {
-      // TODO: implementar
+      // TODO: implementar — depende de C560.
     });
 
     it.skip('[e2e] @C563 Verificar que se gestionan correctamente los parámetros de instalación al eliminar el activo asociado a un paquete', async () => {
-      // TODO: implementar
+      // TODO: implementar — depende de C560.
     });
 
   });
