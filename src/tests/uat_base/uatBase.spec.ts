@@ -1,3 +1,4 @@
+import pactum from 'pactum';
 import { setupPactum } from '../../helpers/request.helper';
 import { TestReport, SuiteReport } from '../../helpers/report.helper';
 
@@ -33,6 +34,8 @@ import {
   assignTechnicianToWorkOrder,
   releaseServiceAppointment,
   createServiceAppointment,
+  createWorkOrder,
+  countChildWorkOrders,
 } from '../../helpers/steps/order.steps';
 import { sfQuery } from '../../helpers/salesforce-query.helper';
 import { updateRecord } from '../../helpers/salesforce-crud.helper';
@@ -847,9 +850,41 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Orden de trabajo - hijas', () => {
-    it.skip('[e2e] @C586 Verificar que se pueden crear OTs hijas vinculadas a una OT principal y se actualiza su conteo', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C586 Verificar que se pueden crear OTs hijas vinculadas a una OT principal y se actualiza su conteo', async () => {
+      const report = new TestReport('C586 — Crear OTs hijas y verificar conteo');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        const [, { orderId }] = await Promise.all([
+          changeIndustriaQuoteStatusToWon(quoteId, report),
+          waitAndPatchIndustriaOrderActivity(quoteId, report),
+        ]);
+        await verifyOrderSyncedByOrderId(orderId, { initialDelayMs: 15000 });
+
+        const parentWorkOrderId = await queryWorkOrderByOrderId(orderId);
+        expect(parentWorkOrderId).toBeTruthy();
+        const parentWorkOrder = await getWorkOrder(parentWorkOrderId!);
+        report.step('Verificar OT principal', { 'WorkOrder Id': parentWorkOrderId!, 'AccountId': parentWorkOrder['AccountId'] as string }, 'ok');
+
+        // WorkOrder has no rollup field for child count — verified via SOQL count instead.
+        for (let i = 1; i <= 2; i++) {
+          const childId = await createWorkOrder({
+            ParentWorkOrderId: parentWorkOrderId,
+            AccountId:         parentWorkOrder['AccountId'],
+            Subject:           `E2E OT hija ${i}`,
+          });
+          report.step(`Crear OT hija ${i}`, { 'WorkOrder Id': childId, 'ParentWorkOrderId': parentWorkOrderId! }, 'ok');
+        }
+
+        const childCount = await countChildWorkOrders(parentWorkOrderId!);
+        expect(childCount).toBe(2);
+        report.step('Verificar conteo de OTs hijas', { 'WorkOrder Id': parentWorkOrderId!, 'Conteo': String(childCount) }, 'ok');
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 180000);
 
   });
 
@@ -924,23 +959,59 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Fied Service', () => {
-    it.skip('[e2e] @C590 Verificar que el estado de la OT principal cambia a \'Programada\' al despachar la única cita o todas las citas relacionadas', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C590 Verificar que el estado de la OT principal cambia a \'Programada\' al despachar la única cita o todas las citas relacionadas', async () => {
+      const report = new TestReport('C590 — Despachar única cita cambia la OT a Programada');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        const [, { orderId, assetId }] = await Promise.all([
+          changeIndustriaQuoteStatusToWon(quoteId, report),
+          waitAndPatchIndustriaOrderActivity(quoteId, report),
+        ]);
+        await verifyOrderSyncedByOrderId(orderId, { initialDelayMs: 15000 });
+
+        const workOrderId = await queryWorkOrderByOrderId(orderId);
+        const sa = await assertServiceAppointmentForOrder(orderId, report);
+
+        const workOrderBefore = await getWorkOrder(workOrderId!);
+        report.step('Estado inicial de la OT', { 'WorkOrder Id': workOrderId!, 'Status': String(workOrderBefore['Status']) }, 'ok');
+
+        await scheduleServiceAppointment(sa.Id, report);
+        await assignTechnicianToWorkOrder(workOrderId!, report, assetId);
+        await dispatchServiceAppointment(sa.Id, report);
+
+        const workOrderAfter = await getWorkOrder(workOrderId!);
+        // WorkOrder.Status picklist: '2' = Scheduled ("Programada")
+        expect(workOrderAfter['Status']).toBe('2');
+        report.step('Verificar OT en estado Programada', { 'WorkOrder Id': workOrderId!, 'Status': String(workOrderAfter['Status']) }, 'ok');
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 180000);
 
     it.skip('[e2e] @C591 Verificar que al reprogramar una cita de servicio se actualiza la hora y se notifica al técnico y al cliente', async () => {
-      // TODO: implementar
+      // TODO: implementar — el reprogramado en sí es viable, pero requiere verificar el envío
+      // de notificación (email/transaccional), que queda bloqueado junto al resto del grupo de email.
     });
 
   });
 
+  // BLOCKED (C592, C593): dispatch→Scheduled works cleanly (see C590), but pushing the SA further
+  // to a completed/finalized state hits a stricter validation chain than expected — moving
+  // Status to 'in_progress' worked, but the next transition failed with a generic
+  // "unexpected error... trying to process the service appointment status change", and on one
+  // attempt the parent WorkOrder ended up in an unrelated 'Rejected' state as a side effect.
+  // Needs the real intermediate-status sequence (likely involves a signature/report step) before
+  // reattempting.
   describe('Cita de servicio', () => {
     it.skip('[e2e] @C592 Verificar que el estado de la OT principal permanece inalterado al finalizar una cita si existen otras citas en estados distintos', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota arriba sobre la máquina de estados de finalización de la cita.
     });
 
     it.skip('[e2e] @C593 Verificar que el estado de la OT principal cambia a \'Finalizada\' al finalizar la única cita o todas las citas relacionadas', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota arriba sobre la máquina de estados de finalización de la cita.
     });
 
   });
@@ -1164,9 +1235,26 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Informes de desviación', () => {
-    it.skip('[e2e] @C631 Verificar que se pueden crear informes de desviación, no conformidades y acciones preventivas o correctivas', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C631 Verificar que se pueden crear informes de desviación, no conformidades y acciones preventivas o correctivas', async () => {
+      const report = new TestReport('C631 — Crear informe de desviación (Audit__c)');
+      try {
+        const auditId = await pactum.spec()
+          .post('/sobjects/Audit__c/')
+          .withBody({ AuditType__c: 'Auditoría Interna', Status__c: 'Pendiente de resolución' })
+          .withRequestTimeout(30000)
+          .expectStatus(201)
+          .returns('id') as string;
+        report.step('Crear Informe de desviación', { 'Audit Id': auditId, 'AuditType__c': 'Auditoría Interna' }, 'ok');
+
+        const audit = await pactum.spec().get(`/sobjects/Audit__c/${auditId}`).expectStatus(200).returns('.') as Record<string, unknown>;
+        expect(audit['Id']).toBe(auditId);
+        expect(audit['AuditType__c']).toBe('Auditoría Interna');
+        expect(audit['Status__c']).toBe('Pendiente de resolución');
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
 
   });
 

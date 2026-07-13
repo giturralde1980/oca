@@ -141,6 +141,24 @@ export async function getWorkOrder(id: string): Promise<Record<string, unknown>>
   return wo as Record<string, unknown>;
 }
 
+export async function createWorkOrder(payload: Record<string, unknown>): Promise<string> {
+  const id = await pactum.spec()
+    .post('/sobjects/WorkOrder/')
+    .withBody(payload)
+    .withRequestTimeout(30000)
+    .expectStatus(201)
+    .returns('id');
+  return id as string;
+}
+
+/** Counts child WorkOrders (ParentWorkOrderId) — there is no rollup field for this on WorkOrder. */
+export async function countChildWorkOrders(parentWorkOrderId: string): Promise<number> {
+  const children = await sfQuery.query<{ Id: string }>(
+    `SELECT Id FROM WorkOrder WHERE ParentWorkOrderId = '${parentWorkOrderId}'`,
+  );
+  return children.length;
+}
+
 // Manually creates an additional ServiceAppointment under the same WorkOrder — only
 // EarliestStartTime and DueDate are required on create. Used to simulate a WorkOrder
 // with appointments in different states (the auto-created SA is always the first one).
