@@ -716,9 +716,19 @@ describe('Funcional — UAT Base', () => {
 
   });
 
+  // BLOCKED (C547 + the whole "Transaccionales" group + C591/C596/C597 below): the org sends
+  // transactional email via two mechanisms — standard Salesforce email alerts (logged as a
+  // Task with TaskSubtype='Email', related via WhatId) and Marketing Cloud Engagement/Pardot
+  // triggered sends (logged in et4ae5__IndividualEmailResult__c, related via
+  // et4ae5__Contact__c). Both are straightforward to poll once triggered. The problem is
+  // triggering them: tried QuoteURL__c + Status in ('Entregada','Presentada','Validada') for
+  // C547, and a full WorkOrder-finalize flow (technician assigned, SA dispatched, Status='4'
+  // with justification) for C596/C597 — none produced an email Task, an IndividualEmailResult,
+  // or any cert/inspection-date field change. Same "Apex/Flow behind a UI action" pattern as
+  // RTE — needs the real trigger identified before these can be implemented.
   describe('Oferta comercial - Envío documento', () => {
     it.skip('[e2e] @C547 Verificar que al completar la URL del documento y pasar la oferta a \'Enviar documento\' se envía el transaccional al prescriptor', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota arriba sobre el mecanismo de email bloqueado.
     });
 
   });
@@ -917,12 +927,15 @@ describe('Funcional — UAT Base', () => {
       // TODO: implementar
     });
 
+    // BLOCKED — see the email mechanism note at "Oferta comercial - Envío documento". Tried the
+    // full WorkOrder-finalize flow (technician + dispatched SA + Status='4' + justification);
+    // no cert email Task or NextInspectionDate__c change resulted.
     it.skip('[e2e] @C596 Verificar que la fecha de próxima inspección no cambia y se envía el certificado por correo al finalizar un trabajo sin periodicidad de inspección', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota sobre el mecanismo de email bloqueado.
     });
 
     it.skip('[e2e] @C597 Verificar que la fecha de próxima inspección se actualiza correctamente y se envía el transaccional de caducidad al finalizar un trabajo con periodicidad de inspección', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota sobre el mecanismo de email bloqueado.
     });
 
   });
@@ -1347,6 +1360,11 @@ describe('Funcional — UAT Base', () => {
 
   });
 
+  // BLOCKED (all 9 below) — see the email mechanism note at "Oferta comercial - Envío
+  // documento". Each of these ties to a different business event (2 days before/after a cita,
+  // 48h after finishing an OT, 24h/7 days around an invoice, 6 months before next inspection) —
+  // none tested individually yet, but they share the same root blocker: no direct field update
+  // found so far triggers the underlying send.
   describe('Transaccionales', () => {
     it.skip('[e2e] @C632 Verificar que se envía el transaccional al prescriptor al cambiar la oferta comercial a \'Enviar documento\'', async () => {
       // TODO: implementar
