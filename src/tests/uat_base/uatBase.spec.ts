@@ -35,6 +35,9 @@ import {
   createServiceAppointment,
 } from '../../helpers/steps/order.steps';
 import { sfQuery } from '../../helpers/salesforce-query.helper';
+import { updateRecord } from '../../helpers/salesforce-crud.helper';
+import { waitForPendingApproval, approveWorkItem, rejectWorkItem } from '../../helpers/steps/approval-process.steps';
+import { getQuote } from '../../helpers/steps/quote.steps';
 
 // Source Quote used to seed line-item pricing data (same one used by the proven
 // Industria E2E flow — reused here per business decision, see src/tests/e2e/quotes/industria).
@@ -460,9 +463,33 @@ describe('Funcional — UAT Base', () => {
       // TODO: implementar — ver nota sobre el motor de cálculo de impuestos en "Oferta comercial - Impuestos".
     });
 
-    it.skip('[e2e] @C546 Verificar que se puede recuperar un proceso de aprobación de oferta comercial solicitado', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C546 Verificar que se puede recuperar un proceso de aprobación de oferta comercial solicitado', async () => {
+      const report = new TestReport('C546 — Recuperar proceso de aprobación de Oferta solicitado');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId, lineItemId } = await setupIndustriaQuote(sourceLI, report);
+
+        // Discount__c=80 crosses the "Oferta Máx % Desc" approval process's entry criteria
+        // (found empirically — this org has 40+ Quote approval process variants by business
+        // line/threshold, not inspectable via REST).
+        await updateRecord('QuoteLineItem', lineItemId, { Discount__c: 80 });
+        report.step('Forzar condición de aprobación (Discount__c=80)', { 'LineItem Id': lineItemId }, 'ok');
+
+        await changeQuoteStatus(quoteId, 'Generada', report);
+
+        const approval = await waitForPendingApproval(quoteId);
+        expect(approval.instanceId).toBeTruthy();
+        expect(approval.workItemId).toBeTruthy();
+        report.step(
+          'Recuperar proceso de aprobación solicitado',
+          { 'Quote Id': quoteId, 'ProcessInstance Id': approval.instanceId, 'Proceso': approval.processName },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
 
     it.skip('[e2e] @C551 Verificar que la asignación de impuestos es del 0% en todas las líneas de oferta cuando corresponda', async () => {
       // TODO: implementar — ver nota sobre el motor de cálculo de impuestos en "Oferta comercial - Impuestos".
@@ -497,24 +524,103 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Oferta comercial - Aprobación', () => {
-    it.skip('[e2e] @C542 Verificar que al cambiar la oferta comercial a estado \'Generado\' se lanza el proceso de aprobación según las condiciones de precio o descuento', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C542 Verificar que al cambiar la oferta comercial a estado \'Generado\' se lanza el proceso de aprobación según las condiciones de precio o descuento', async () => {
+      const report = new TestReport('C542 — Cambio a Generado dispara aprobación por descuento');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId, lineItemId } = await setupIndustriaQuote(sourceLI, report);
 
-    it.skip('[e2e] @C543 Verificar que la oferta comercial se asigna automáticamente al aprobador correspondiente según el precio total o el descuento máximo', async () => {
-      // TODO: implementar
-    });
+        await updateRecord('QuoteLineItem', lineItemId, { Discount__c: 80 });
+        report.step('Forzar condición de aprobación (Discount__c=80)', { 'LineItem Id': lineItemId }, 'ok');
 
-    it.skip('[e2e] @C544 Verificar que al aceptar la oferta comercial el aprobador, su estado cambia correctamente', async () => {
-      // TODO: implementar
-    });
+        await changeQuoteStatus(quoteId, 'Generada', report);
+
+        const approval = await waitForPendingApproval(quoteId);
+        expect(approval.processName).toBeTruthy();
+        report.step(
+          'Verificar que se lanzó el proceso de aprobación',
+          { 'Quote Id': quoteId, 'Proceso': approval.processName },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
+
+    it('[e2e] @C543 Verificar que la oferta comercial se asigna automáticamente al aprobador correspondiente según el precio total o el descuento máximo', async () => {
+      const report = new TestReport('C543 — Asignación automática al aprobador');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId, lineItemId } = await setupIndustriaQuote(sourceLI, report);
+
+        await updateRecord('QuoteLineItem', lineItemId, { Discount__c: 80 });
+        await changeQuoteStatus(quoteId, 'Generada', report);
+
+        const approval = await waitForPendingApproval(quoteId);
+        const [workItem] = await sfQuery.query<{ Id: string; ActorId: string }>(
+          `SELECT Id, ActorId FROM ProcessInstanceWorkitem WHERE Id = '${approval.workItemId}'`,
+        );
+        expect(workItem.ActorId).toBeTruthy();
+        report.step(
+          'Verificar asignación automática al aprobador',
+          { 'Quote Id': quoteId, 'Workitem Id': workItem.Id, 'ActorId (aprobador)': workItem.ActorId },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
+
+    it('[e2e] @C544 Verificar que al aceptar la oferta comercial el aprobador, su estado cambia correctamente', async () => {
+      const report = new TestReport('C544 — Aceptar Oferta: cambia de estado correctamente');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId, lineItemId } = await setupIndustriaQuote(sourceLI, report);
+
+        await updateRecord('QuoteLineItem', lineItemId, { Discount__c: 80 });
+        await changeQuoteStatus(quoteId, 'Generada', report);
+
+        const approval = await waitForPendingApproval(quoteId);
+        const result = await approveWorkItem(approval.workItemId);
+        expect(result.instanceStatus).toBe('Approved');
+        report.step('Aceptar Oferta (aprobador)', { 'Workitem Id': approval.workItemId, 'instanceStatus': result.instanceStatus }, 'ok');
+
+        const quote = await getQuote(quoteId);
+        expect(quote['Status']).toBe('Lista para enviar');
+        report.step('Verificar estado de la Oferta tras aceptación', { 'Quote Id': quoteId, 'Status': quote['Status'] as string }, 'ok');
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
 
   });
 
   describe('Oferta comercial - Rechazo', () => {
-    it.skip('[e2e] @C545 Verificar que al rechazar la oferta comercial el aprobador, su estado cambia correctamente', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C545 Verificar que al rechazar la oferta comercial el aprobador, su estado cambia correctamente', async () => {
+      const report = new TestReport('C545 — Rechazar Oferta: cambia de estado correctamente');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId, lineItemId } = await setupIndustriaQuote(sourceLI, report);
+
+        await updateRecord('QuoteLineItem', lineItemId, { Discount__c: 80 });
+        await changeQuoteStatus(quoteId, 'Generada', report);
+
+        const approval = await waitForPendingApproval(quoteId);
+        const result = await rejectWorkItem(approval.workItemId);
+        expect(result.instanceStatus).toBe('Rejected');
+        report.step('Rechazar Oferta (aprobador)', { 'Workitem Id': approval.workItemId, 'instanceStatus': result.instanceStatus }, 'ok');
+
+        const quote = await getQuote(quoteId);
+        expect(quote['Status']).toBe('Nueva');
+        report.step('Verificar estado de la Oferta tras rechazo', { 'Quote Id': quoteId, 'Status': quote['Status'] as string }, 'ok');
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
 
   });
 
