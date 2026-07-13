@@ -41,6 +41,7 @@ import { sfQuery } from '../../helpers/salesforce-query.helper';
 import { updateRecord } from '../../helpers/salesforce-crud.helper';
 import { waitForPendingApproval, approveWorkItem, rejectWorkItem } from '../../helpers/steps/approval-process.steps';
 import { getQuote } from '../../helpers/steps/quote.steps';
+import { setupFrameworkContract, setWinResponsibleFields } from '../../helpers/steps/framework-contract.steps';
 
 // Source Quote used to seed line-item pricing data (same one used by the proven
 // Industria E2E flow — reused here per business decision, see src/tests/e2e/quotes/industria).
@@ -375,21 +376,46 @@ describe('Funcional — UAT Base', () => {
 
   });
 
+  // "Contrato Marco" = Quote with RecordTypeId = Framework_Contract (see
+  // framework-contract.steps.ts). Confirmed empirically: creating an Opportunity does NOT
+  // auto-generate a related Framework Contract Quote (queried right after insert — none
+  // appeared), so C527's premise ("se genera correctamente el contrato marco... al crear una
+  // oportunidad") doesn't hold for a plain Opportunity insert; it must be a manual UI action.
   describe('Oportunidad + Contrato Marco', () => {
     it.skip('[e2e] @C527 Verificar que al crear una oportunidad se genera correctamente el contrato marco relacionado con sus campos autocompletados', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota arriba: la Quote Framework_Contract no se genera sola al crear la Opportunity.
     });
 
   });
 
   describe('Contrato Marco', () => {
+    // BLOCKED: a second QuoteLineItem repeating the same PricebookEntryId on the same Framework
+    // Contract Quote hits "The price data inserted is not correct" (generic validation, no field
+    // named) even with the exact same field recipe that worked for the first line — needs more
+    // investigation into what a "repeated product" line requires beyond a fresh product line.
     it.skip('[e2e] @C528 Verificar que se pueden configurar en el contrato marco varios productos repetidos, tanto principales como complementos', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota arriba sobre el error de validación en la segunda línea repetida.
     });
 
-    it.skip('[e2e] @C533 Verificar que se puede recuperar un proceso de aprobación de contrato marco solicitado', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C533 Verificar que se puede recuperar un proceso de aprobación de contrato marco solicitado', async () => {
+      const report = new TestReport('C533 — Recuperar proceso de aprobación de Contrato Marco');
+      try {
+        const { quoteId } = await setupFrameworkContract(report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+
+        const approval = await waitForPendingApproval(quoteId);
+        expect(approval.instanceId).toBeTruthy();
+        expect(approval.workItemId).toBeTruthy();
+        report.step(
+          'Recuperar proceso de aprobación solicitado',
+          { 'Quote Id': quoteId, 'ProcessInstance Id': approval.instanceId, 'Proceso': approval.processName },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
 
   });
 
@@ -401,30 +427,93 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Contrato Marco - Aprobación', () => {
-    it.skip('[e2e] @C530 Verificar que al cambiar el contrato marco a estado \'Generado\' se lanza el proceso de aprobación correctamente', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C530 Verificar que al cambiar el contrato marco a estado \'Generado\' se lanza el proceso de aprobación correctamente', async () => {
+      const report = new TestReport('C530 — Cambio a Generado dispara aprobación (Contrato Marco)');
+      try {
+        const { quoteId } = await setupFrameworkContract(report);
+        // Unlike Oferta Comercial, Framework Contract approval is unconditional — no price/
+        // discount threshold needed, it always fires on Generada.
+        await changeQuoteStatus(quoteId, 'Generada', report);
+
+        const approval = await waitForPendingApproval(quoteId);
+        expect(approval.processName).toBeTruthy();
+        report.step('Verificar que se lanzó el proceso de aprobación', { 'Quote Id': quoteId, 'Proceso': approval.processName }, 'ok');
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
 
   });
 
   describe('Contrato Marco - Aceptación', () => {
-    it.skip('[e2e] @C531 Verificar que al aceptar el contrato marco el aprobador, su estado cambia correctamente', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C531 Verificar que al aceptar el contrato marco el aprobador, su estado cambia correctamente', async () => {
+      const report = new TestReport('C531 — Aceptar Contrato Marco: cambia de estado correctamente');
+      try {
+        const { quoteId } = await setupFrameworkContract(report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+
+        const approval = await waitForPendingApproval(quoteId);
+        const result = await approveWorkItem(approval.workItemId);
+        expect(result.instanceStatus).toBe('Approved');
+        report.step('Aceptar Contrato Marco (aprobador)', { 'Workitem Id': approval.workItemId, 'instanceStatus': result.instanceStatus }, 'ok');
+
+        const quote = await getQuote(quoteId);
+        expect(quote['Status']).toBe('Lista para enviar');
+        report.step('Verificar estado del Contrato Marco tras aceptación', { 'Quote Id': quoteId, 'Status': quote['Status'] as string }, 'ok');
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
 
   });
 
   describe('Contrato Marco - Rechazo', () => {
-    it.skip('[e2e] @C532 Verificar que al rechazar el contrato marco el aprobador, su estado cambia correctamente', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C532 Verificar que al rechazar el contrato marco el aprobador, su estado cambia correctamente', async () => {
+      const report = new TestReport('C532 — Rechazar Contrato Marco: cambia de estado correctamente');
+      try {
+        const { quoteId } = await setupFrameworkContract(report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+
+        const approval = await waitForPendingApproval(quoteId);
+        const result = await rejectWorkItem(approval.workItemId);
+        expect(result.instanceStatus).toBe('Rejected');
+        report.step('Rechazar Contrato Marco (aprobador)', { 'Workitem Id': approval.workItemId, 'instanceStatus': result.instanceStatus }, 'ok');
+
+        const quote = await getQuote(quoteId);
+        expect(quote['Status']).toBe('Nueva');
+        report.step('Verificar estado del Contrato Marco tras rechazo', { 'Quote Id': quoteId, 'Status': quote['Status'] as string }, 'ok');
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
 
   });
 
   describe('Contrato Marco - Ganado', () => {
-    it.skip('[e2e] @C534 Verificar que se puede cerrar un contrato marco como ganado', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C534 Verificar que se puede cerrar un contrato marco como ganado', async () => {
+      const report = new TestReport('C534 — Cerrar Contrato Marco como ganado');
+      try {
+        const { quoteId } = await setupFrameworkContract(report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+
+        const approval = await waitForPendingApproval(quoteId);
+        await approveWorkItem(approval.workItemId);
+        report.step('Aprobar Contrato Marco (paso previo a ganar)', { 'Quote Id': quoteId }, 'ok');
+
+        await setWinResponsibleFields(quoteId, report);
+        await updateRecord('Quote', quoteId, { Status: 'won' }, 60000);
+        report.step('Cambiar estado Contrato Marco → won', { 'Quote Id': quoteId, 'Status': 'won' }, 'ok');
+
+        const quote = await getQuote(quoteId);
+        expect(quote['Status']).toBe('won');
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
 
   });
 

@@ -247,12 +247,8 @@ class TestRailReporter {
     const { numPassedTests, numFailedTests } = results;
     console.log(`\n[TestRail] Run finalizado — ✅ ${numPassedTests} passed, ❌ ${numFailedTests} failed\n`);
 
-    try {
-      const report = await trRequest('GET', `run_report/${TESTRAIL_REPORT_TEMPLATE_ID}`);
-      console.log(`[TestRail] Reporte generado: ${report.report_url}\n`);
-    } catch (err) {
-      console.warn('[TestRail] No se pudo generar el reporte:', err.message);
-    }
+    // Report generation via run_report/{TESTRAIL_REPORT_TEMPLATE_ID} is suppressed for now
+    // (per request) — re-enable by restoring the trRequest('GET', `run_report/...`) call here.
   }
 }
 
