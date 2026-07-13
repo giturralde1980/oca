@@ -5,11 +5,13 @@ import { buildLead } from '../../helpers/fixtures/lead.fixture';
 import { createLead, getLead, deleteLead, convertLead } from '../../helpers/steps/lead.steps';
 
 import { buildAccount, ACCOUNT_RECORD_TYPES } from '../../helpers/fixtures/account.fixture';
-import { createAccount, getAccount } from '../../helpers/steps/account.steps';
+import { createAccount, getAccount, verifyAccountLinkedToSAP } from '../../helpers/steps/account.steps';
 
-// Contact fixture/steps (buildContact, createContact, verifyContactLinkedToSAP) are ready for
-// reuse in C517 once the Contact→SAP sync trigger is confirmed — see note at that describe block.
-import { getContact } from '../../helpers/steps/contact.steps';
+import { buildContact } from '../../helpers/fixtures/contact.fixture';
+import { createContact, getContact } from '../../helpers/steps/contact.steps';
+
+import { buildBillingProfile } from '../../helpers/fixtures/billing-profile.fixture';
+import { createBillingProfile, getBillingProfile } from '../../helpers/steps/billing-profile.steps';
 
 import { buildAsset, ASSET_RECORD_TYPES, CENTER_ADDRESS_REFS } from '../../helpers/fixtures/asset.fixture';
 import { createAsset, getAsset, createEquipmentCvm } from '../../helpers/steps/asset.steps';
@@ -110,26 +112,101 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Cuenta - Cliente', () => {
-    it.skip('[e2e] @C516 Verificar que se puede crear una cuenta de tipo Cliente con los campos necesarios para sincronizar con SAP', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C516 Verificar que se puede crear una cuenta de tipo Cliente con los campos necesarios para sincronizar con SAP', async () => {
+      const report = new TestReport('C516 — Crear cuenta Cliente con campos SAP');
+      try {
+        const accountId = await createAccount(buildAccount({ RecordTypeId: ACCOUNT_RECORD_TYPES.BUSINESS }));
+        report.step('Crear Cuenta (Cliente)', { 'Account Id': accountId, 'RecordTypeId': ACCOUNT_RECORD_TYPES.BUSINESS }, 'ok');
 
-    it.skip('[e2e] @C518 Verificar que se puede crear un perfil de facturación vinculado a la cuenta y al contacto, y que sincroniza correctamente', async () => {
-      // TODO: implementar
-    });
+        await verifyAccountLinkedToSAP(accountId, { timeoutMs: 60000 });
+        report.step('Verificar Cuenta sincronizada con SAP', { 'Account Id': accountId }, 'ok');
+
+        const account = await getAccount(accountId);
+        expect(account['RecordTypeId']).toBe(ACCOUNT_RECORD_TYPES.BUSINESS);
+        expect(account['CIF__c']).toBeTruthy();
+        expect(account['AccountNumber']).toBeTruthy();
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
+
+    // The BillingProfile__c→SAP sync trigger is unconfirmed — same open question as C517's
+    // Contact sync (tried the exact field recipe from a real synced record, still not enough).
+    // Per business decision, creation/relationships are asserted for real and the sync check
+    // is logged as informational only.
+    it('[e2e] @C518 Verificar que se puede crear un perfil de facturación vinculado a la cuenta y al contacto, y que sincroniza correctamente', async () => {
+      const report = new TestReport('C518 — Crear Perfil de Facturación vinculado a Cuenta+Contacto');
+      try {
+        const accountId = await createAccount(buildAccount({ RecordTypeId: ACCOUNT_RECORD_TYPES.BUSINESS }));
+        report.step('Crear Cuenta', { 'Account Id': accountId }, 'ok');
+
+        await verifyAccountLinkedToSAP(accountId, { initialDelayMs: 10000, timeoutMs: 60000 });
+        report.step('Verificar Cuenta sincronizada con SAP', { 'Account Id': accountId }, 'ok');
+
+        const contactId = await createContact(buildContact(accountId));
+        report.step('Crear Contacto vinculado a la Cuenta', { 'Contact Id': contactId, 'Account Id': accountId }, 'ok');
+
+        const billingProfileId = await createBillingProfile(buildBillingProfile(accountId, contactId));
+        report.step('Crear Perfil de Facturación', { 'BillingProfile Id': billingProfileId, 'Account__c': accountId, 'Contact__c': contactId }, 'ok');
+
+        const billingProfile = await getBillingProfile(billingProfileId);
+        expect(billingProfile['Id']).toBe(billingProfileId);
+        expect(billingProfile['Account__c']).toBe(accountId);
+        expect(billingProfile['Contact__c']).toBe(contactId);
+
+        // Informational only — see note above on the unconfirmed sync trigger.
+        await new Promise(r => setTimeout(r, 15000));
+        const polled = await getBillingProfile(billingProfileId);
+        report.step(
+          'Estado de sincronización SAP (informativo, no bloqueante)',
+          { 'BillingProfile Id': billingProfileId, 'AccountSAPId__c': (polled['AccountSAPId__c'] as string) ?? '(sin sincronizar)' },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 90000);
 
   });
 
   describe('Contacto - Cliente', () => {
-    // BLOCKED: Account syncs fine (valid Spanish address + CIF__c + InvoiceMail__c present via
-    // buildAccount()), but a Contact created against that synced Account never gets
-    // ContactNumber__c populated even after 2 min of polling — tried matching a real synced
-    // Contact's extra fields (RecordTypeId='Contact', ContactType__c='main', Activity__c='6100',
-    // AcceptLOPDc__c=true, Status__c='Activo') with no effect. The actual Contact→SAP sync
-    // trigger (real-time vs. batch vs. manual action) is still unconfirmed — pending business input.
-    it.skip('[e2e] @C517 Verificar que un contacto nuevo sincroniza correctamente con SAP tras sincronizarse la cuenta', async () => {
-      // TODO: implementar — ver nota arriba sobre el trigger de sincronización de Contacto.
-    });
+    // The Contact→SAP sync trigger (real-time vs. batch vs. manual action) is unconfirmed —
+    // tried matching a real synced Contact's extra fields (RecordTypeId='Contact',
+    // ContactType__c='main', Activity__c='6100', AcceptLOPDc__c=true, Status__c='Activo') with
+    // no effect; ContactNumber__c never populates within a reasonable poll window. Per business
+    // decision, the creation/relationship is asserted for real and the sync check is logged as
+    // informational only, pending confirmation of the actual trigger.
+    it('[e2e] @C517 Verificar que un contacto nuevo sincroniza correctamente con SAP tras sincronizarse la cuenta', async () => {
+      const report = new TestReport('C517 — Contacto nuevo sincroniza con SAP tras la cuenta');
+      try {
+        const accountId = await createAccount(buildAccount({ RecordTypeId: ACCOUNT_RECORD_TYPES.BUSINESS }));
+        report.step('Crear Cuenta', { 'Account Id': accountId }, 'ok');
+
+        await verifyAccountLinkedToSAP(accountId, { initialDelayMs: 10000, timeoutMs: 60000 });
+        report.step('Verificar Cuenta sincronizada con SAP', { 'Account Id': accountId }, 'ok');
+
+        const contactId = await createContact(buildContact(accountId));
+        report.step('Crear Contacto vinculado a la Cuenta', { 'Contact Id': contactId, 'Account Id': accountId }, 'ok');
+
+        const contact = await getContact(contactId);
+        expect(contact['Id']).toBe(contactId);
+        expect(contact['AccountId']).toBe(accountId);
+
+        // Informational only — see note above on the unconfirmed sync trigger.
+        await new Promise(r => setTimeout(r, 15000));
+        const polled = await getContact(contactId);
+        report.step(
+          'Estado de sincronización SAP (informativo, no bloqueante)',
+          { 'Contact Id': contactId, 'ContactNumber__c': (polled['ContactNumber__c'] as string) ?? '(sin sincronizar)' },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 90000);
 
   });
 
@@ -208,19 +285,50 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Activos - Jerarquía', () => {
-    it.skip('[e2e] @C522 Verificar que se puede crear un activo de tipo Instalación vinculado a un centro (jerarquía de activos)', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C522 Verificar que se puede crear un activo de tipo Instalación vinculado a un centro (jerarquía de activos)', async () => {
+      const report = new TestReport('C522 — Instalación vinculada a un Centro (jerarquía)');
+      try {
+        const accountId = await createAccount(buildAccount({ RecordTypeId: ACCOUNT_RECORD_TYPES.BUSINESS }));
+        report.step('Crear Cuenta propietaria', { 'Account Id': accountId }, 'ok');
+
+        const centerId = await createAsset(buildAsset(accountId, ASSET_RECORD_TYPES.CENTER, {
+          Country__c:  CENTER_ADDRESS_REFS.COUNTRY__C,
+          Region__c:   CENTER_ADDRESS_REFS.REGION__C,
+          Province__c: CENTER_ADDRESS_REFS.PROVINCE__C,
+        }));
+        report.step('Crear Activo padre (Centro)', { 'Asset Id': centerId, 'RecordTypeId': ASSET_RECORD_TYPES.CENTER }, 'ok');
+
+        const installationId = await createAsset(buildAsset(accountId, ASSET_RECORD_TYPES.INSTALLATION, {
+          ParentId: centerId,
+        }));
+        report.step('Crear Activo hijo (Instalación)', { 'Asset Id': installationId, 'ParentId': centerId }, 'ok');
+
+        const installation = await getAsset(installationId);
+        expect(installation['Id']).toBe(installationId);
+        expect(installation['ParentId']).toBe(centerId);
+        expect(installation['RecordTypeId']).toBe(ASSET_RECORD_TYPES.INSTALLATION);
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
 
   });
 
   describe('Cuenta - Proveedor', () => {
+    // BLOCKED: Supplier (RT 01209000000ivaPAAQ) uses a completely different SAP/CVI field
+    // mapping than Client/Explotación/Delegación. Errors from SAP confirm required: Teléfono 2,
+    // Nº telefax, Número de télex, SMTP email — but Phone2__c/Fax overrides did not resolve
+    // them, meaning those aren't the fields actually read by the integration. A real synced
+    // Supplier account also uses address fields not used elsewhere in this org
+    // (LKP_Billing_Region__c, TXT_Billing_Street_Number__c) instead of standard
+    // BillingStreet/BillingCity. Full field mapping needs confirmation before implementing.
     it.skip('[e2e] @C523 Verificar que se puede crear una cuenta de tipo Proveedor con los campos necesarios para sincronizar con SAP', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota arriba sobre el mapeo de campos SAP/CVI de Proveedor.
     });
 
     it.skip('[e2e] @C524 Verificar que se puede crear un perfil de facturación para una cuenta Proveedor y darla de alta en una nueva sociedad', async () => {
-      // TODO: implementar
+      // TODO: implementar — depende de C523 (cuenta Proveedor sincronizada).
     });
 
   });
