@@ -436,20 +436,28 @@ describe('Funcional — UAT Base', () => {
 
   });
 
+  // BLOCKED (C537, C538, C548, C551, C552, C553 below + C549/C550 in "Oferta comercial - Tasas"):
+  // built the full real flow (Opportunity → Quote → QuoteLineItem) without Bypass_Apex__c —
+  // had to resolve Section__c's controlling field (BusinessLine__c='RG'), Quote.Name character
+  // validation, and UnitPrice-must-match-PricebookEntry — and the QuoteLineItem inserts fine,
+  // but Taxes__c/TaxesTotal__c/Fee__c stay null even after waiting 25s+ and moving the Quote to
+  // 'Generada'. The tax/fee/duration calculation does not appear to be a DB trigger — it likely
+  // lives in an Apex controller behind the UI's "Agregar producto" action, not reachable via a
+  // plain REST insert. Needs the actual Apex class/Quick Action name to invoke directly.
   describe('Oferta comercial - Impuestos', () => {
     it.skip('[e2e] @C537 Verificar que se puede crear una oferta comercial con impuestos no exentos y sus campos se autocompletan correctamente', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota arriba sobre el motor de cálculo de impuestos.
     });
 
     it.skip('[e2e] @C548 Verificar que se puede crear una oferta comercial con impuestos exentos y sus campos se autocompletan correctamente', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota arriba sobre el motor de cálculo de impuestos.
     });
 
   });
 
   describe('Oferta comercial', () => {
     it.skip('[e2e] @C538 Verificar que al configurar la oferta comercial se asignan correctamente los impuestos según el activo vinculado a cada línea', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota sobre el motor de cálculo de impuestos en "Oferta comercial - Impuestos".
     });
 
     it.skip('[e2e] @C546 Verificar que se puede recuperar un proceso de aprobación de oferta comercial solicitado', async () => {
@@ -457,15 +465,15 @@ describe('Funcional — UAT Base', () => {
     });
 
     it.skip('[e2e] @C551 Verificar que la asignación de impuestos es del 0% en todas las líneas de oferta cuando corresponda', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota sobre el motor de cálculo de impuestos en "Oferta comercial - Impuestos".
     });
 
     it.skip('[e2e] @C552 Verificar que añadir complementos sin el check \'Add duration\' no modifica el tiempo estimado de las OTs relacionadas', async () => {
-      // TODO: implementar
+      // TODO: implementar — misma causa raíz (motor Apex de cálculo no reachable via REST).
     });
 
     it.skip('[e2e] @C553 Verificar que añadir complementos con el check \'Add duration\' modifica el tiempo estimado de las OTs relacionadas', async () => {
-      // TODO: implementar
+      // TODO: implementar — misma causa raíz (motor Apex de cálculo no reachable via REST).
     });
 
   });
@@ -517,13 +525,15 @@ describe('Funcional — UAT Base', () => {
 
   });
 
+  // BLOCKED — same root cause as "Oferta comercial - Impuestos": the rates/fees column does not
+  // populate on a plain QuoteLineItem REST insert.
   describe('Oferta comercial - Tasas', () => {
     it.skip('[e2e] @C549 Verificar que la columna de tasas se rellena al añadir un activo ubicado en una región con tasa', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota sobre el motor de cálculo de impuestos en "Oferta comercial - Impuestos".
     });
 
     it.skip('[e2e] @C550 Verificar que la columna de tasas se rellena al crear un producto de una delegación con tasas', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota sobre el motor de cálculo de impuestos en "Oferta comercial - Impuestos".
     });
 
   });
