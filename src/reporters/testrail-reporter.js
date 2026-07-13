@@ -3,6 +3,10 @@
 const https = require('https');
 const { URL } = require('url');
 
+const TESTRAIL_SUITE_ID           = 6;
+const TESTRAIL_PLAN_ID            = 113; // "UAT Base" plan — https://oca.testrail.io/index.php?/plans/view/113
+const TESTRAIL_REPORT_TEMPLATE_ID = 1;   // "Plan (Summary)" report, scoped to plan 113
+
 const CASE_MAP = {
   // Sección "Integracion" (creada dentro de Test Cases, suite Master)
   'IDI → Won → Firmada':                                             1311,
@@ -192,17 +196,20 @@ class TestRailReporter {
     try {
       const env  = process.env.TEST_ENV ?? 'qa';
       const date = new Date().toISOString().slice(0, 16).replace('T', ' ');
-      const run  = await trRequest('POST', 'add_run/2', {
-        suite_id:    6,
-        name:        `E2E Salesforce — ${env.toUpperCase()} — ${date}`,
+      // Adds the run as an entry inside the "UAT Base" plan (113) instead of a standalone run,
+      // so every execution stays linked to https://oca.testrail.io/index.php?/plans/view/113
+      const entry = await trRequest('POST', `add_plan_entry/${TESTRAIL_PLAN_ID}`, {
+        suite_id:    TESTRAIL_SUITE_ID,
+        name:        `UAT Salesforce QA — ${env.toUpperCase()} — ${date}`,
         description: `Ejecución automática — ${new Date().toISOString()}`,
         case_ids:    Object.values(CASE_MAP),
         include_all: false,
       });
-      this.runId = run.id;
-      console.log(`\n[TestRail] Run creado: ${run.url}\n`);
+      const run  = entry.runs && entry.runs[0];
+      this.runId = run && run.id;
+      console.log(`\n[TestRail] Run creado dentro del plan ${TESTRAIL_PLAN_ID}: https://oca.testrail.io/index.php?/runs/view/${this.runId}&plan_id=${TESTRAIL_PLAN_ID}\n`);
     } catch (err) {
-      console.warn('[TestRail] No se pudo crear el run:', err.message);
+      console.warn('[TestRail] No se pudo crear el run en el plan:', err.message);
     }
   }
 
@@ -231,12 +238,20 @@ class TestRailReporter {
 
   async onRunComplete(_contexts, results) {
     if (!this.enabled || !this.runId) return;
+
+    // A run that belongs to a plan can't be closed on its own (close_run/{id} → 403), and
+    // TestRail's API has no "close this one entry" method — only close_plan/{id}, which closes
+    // the whole plan and would block future executions from being added to it. Since the plan
+    // is meant to accumulate every UAT Base run over time, we intentionally leave it open and
+    // just report the counts + generate the summary report.
+    const { numPassedTests, numFailedTests } = results;
+    console.log(`\n[TestRail] Run finalizado — ✅ ${numPassedTests} passed, ❌ ${numFailedTests} failed\n`);
+
     try {
-      await trRequest('POST', `close_run/${this.runId}`, {});
-      const { numPassedTests, numFailedTests } = results;
-      console.log(`\n[TestRail] Run cerrado — ✅ ${numPassedTests} passed, ❌ ${numFailedTests} failed\n`);
+      const report = await trRequest('GET', `run_report/${TESTRAIL_REPORT_TEMPLATE_ID}`);
+      console.log(`[TestRail] Reporte generado: ${report.report_url}\n`);
     } catch (err) {
-      console.warn('[TestRail] No se pudo cerrar el run:', err.message);
+      console.warn('[TestRail] No se pudo generar el reporte:', err.message);
     }
   }
 }
