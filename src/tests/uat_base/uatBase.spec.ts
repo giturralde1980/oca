@@ -15,7 +15,7 @@ import { buildBillingProfile } from '../../helpers/fixtures/billing-profile.fixt
 import { createBillingProfile, getBillingProfile } from '../../helpers/steps/billing-profile.steps';
 
 import { buildAsset, ASSET_RECORD_TYPES, CENTER_ADDRESS_REFS } from '../../helpers/fixtures/asset.fixture';
-import { createAsset, getAsset, createEquipmentCvm } from '../../helpers/steps/asset.steps';
+import { createAsset, getAsset, createEquipmentCvm, waitForInstallationParameters } from '../../helpers/steps/asset.steps';
 
 import {
   getSourceLineItem,
@@ -36,10 +36,13 @@ import {
   createServiceAppointment,
   createWorkOrder,
   countChildWorkOrders,
+  getOrder,
 } from '../../helpers/steps/order.steps';
 import { sfQuery } from '../../helpers/salesforce-query.helper';
 import { updateRecord } from '../../helpers/salesforce-crud.helper';
 import { waitForPendingApproval, approveWorkItem, rejectWorkItem } from '../../helpers/steps/approval-process.steps';
+import { getOrgRefs } from '../../config/org-refs';
+import { setupMAQuote, winMAQuoteAndGetOrder, ACTIVE_COMMERCIAL_USER_ID } from '../../helpers/steps/ma-quote.steps';
 import { getQuote } from '../../helpers/steps/quote.steps';
 import { setupFrameworkContract, setWinResponsibleFields } from '../../helpers/steps/framework-contract.steps';
 
@@ -809,31 +812,48 @@ describe('Funcional — UAT Base', () => {
 
   });
 
-  // BLOCKED (all 4 below): "parámetro de instalación" = Installation_parameters__c (only
-  // requires Asset__c to create; no direct FK to Order/OrderItem — it relates to the
-  // "paquete" product by matching ProductCode__c prefix, e.g. OrderItem product '50510001MA'
-  // ↔ Installation_parameters__c '50510001C0XX'). That PricebookEntry happens to be the exact
-  // one already curated in org-refs.ts for MA_INS (which also uses OrderType=ZOBR — relevant
-  // for C576 too). Couldn't get a MA_INS Quote to "won" to test the actual generation: hit
-  // "To win a quote it is mandatory to fill in the headline" and tried 6 combinations
-  // (QuoteHeader__c='Titular'/'Prescriptor', Quote.Holder__c and QuoteLineItem.Holder__c with
-  // both the Opportunity account and the asset's real owning account/TAIKA) — none resolved
-  // it. Needs the actual validation rule formula from Setup, not more trial and error.
+  // "Parámetro de instalación" = Installation_parameters__c (only requires Asset__c to create;
+  // no direct FK to Order/OrderItem — it relates to the "paquete" product by ProductCode__c
+  // prefix match). Won via MA/INS: the accredited-inspection PricebookEntry curated in
+  // org-refs.ts for that business line IS the "paquete". Winning that Quote needed 3 fields
+  // beyond RG/INS (found via Quote's ValidationRule formulas through the Tooling API):
+  // Holder__c, Payer__c (+ BillingProfile__c already set), and an active AssignedCommercial__c
+  // (org-refs' MA_INS commercial user is inactive here) — see ma-quote.steps.ts.
   describe('Pedido de venta - Parámetros', () => {
-    it.skip('[e2e] @C560 Verificar que se generan los parámetros correspondientes al incluir un paquete de productos vinculado a un activo', async () => {
-      // TODO: implementar — ver nota arriba sobre el bloqueo al ganar la Oferta MA/INS.
-    });
+    it('[e2e] @C560 Verificar que se generan los parámetros correspondientes al incluir un paquete de productos vinculado a un activo', async () => {
+      const report = new TestReport('C560 — Parámetros de instalación generados al incluir un paquete');
+      try {
+        const refs = getOrgRefs('MA', 'INS');
+        const { quoteId } = await setupMAQuote(report, ACTIVE_COMMERCIAL_USER_ID);
+        const orderId = await winMAQuoteAndGetOrder(quoteId, report);
+        expect(orderId).toBeTruthy();
 
+        const params = await waitForInstallationParameters(refs.qli.assetId!, 1);
+        expect(params.length).toBeGreaterThan(0);
+        report.step(
+          'Verificar parámetros de instalación generados',
+          { 'Asset Id': refs.qli.assetId!, 'Cantidad': String(params.length), 'ProductCodes': params.map(p => p.ProductCode__c).join(', ') },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 180000);
+
+    // BLOCKED (C561-563): winning the MA/INS Quote is now solved (see C560), but these need
+    // deleting/reassigning the OrderItem package after Order creation and observing the
+    // resulting Installation_parameters__c change — not yet attempted.
     it.skip('[e2e] @C561 Verificar que se elimina el parámetro de instalación al eliminar un paquete que lo genera, si no está asociado a otro pedido', async () => {
-      // TODO: implementar — depende de C560.
+      // TODO: implementar — reusar setupMAQuote/winMAQuoteAndGetOrder, luego borrar el OrderItem y verificar.
     });
 
     it.skip('[e2e] @C562 Verificar que se gestionan correctamente los parámetros de instalación al cambiar el activo de un paquete', async () => {
-      // TODO: implementar — depende de C560.
+      // TODO: implementar — reusar setupMAQuote/winMAQuoteAndGetOrder, luego cambiar Asset__c del OrderItem y verificar.
     });
 
     it.skip('[e2e] @C563 Verificar que se gestionan correctamente los parámetros de instalación al eliminar el activo asociado a un paquete', async () => {
-      // TODO: implementar — depende de C560.
+      // TODO: implementar — reusar setupMAQuote/winMAQuoteAndGetOrder, luego eliminar el Asset y verificar.
     });
 
   });
@@ -899,9 +919,27 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Pedido de venta - Trámites ZOBR', () => {
-    it.skip('[e2e] @C576 Verificar que un pedido de venta tipo ZOBR para productos EICIs genera correctamente el pedido y sus 2 OTs', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C576 Verificar que un pedido de venta tipo ZOBR para productos EICIs genera correctamente el pedido y sus 2 OTs', async () => {
+      const report = new TestReport('C576 — Pedido ZOBR genera el pedido y sus 2 OTs');
+      try {
+        const { quoteId } = await setupMAQuote(report, ACTIVE_COMMERCIAL_USER_ID);
+        const orderId = await winMAQuoteAndGetOrder(quoteId, report);
+
+        const order = await getOrder(orderId);
+        expect(order['OrderType__c']).toBe('ZOBR');
+
+        const workOrders = await sfQuery.query<{ Id: string }>(`SELECT Id FROM WorkOrder WHERE Order__c = '${orderId}'`);
+        expect(workOrders.length).toBe(2);
+        report.step(
+          'Verificar Pedido ZOBR con sus 2 OTs',
+          { 'Order Id': orderId, 'WorkOrders': String(workOrders.length) },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 180000);
 
   });
 
