@@ -43,7 +43,7 @@ import { updateRecord } from '../../helpers/salesforce-crud.helper';
 import { waitForPendingApproval, approveWorkItem, rejectWorkItem } from '../../helpers/steps/approval-process.steps';
 import { getOrgRefs } from '../../config/org-refs';
 import { setupMAQuote, winMAQuoteAndGetOrder, ACTIVE_COMMERCIAL_USER_ID } from '../../helpers/steps/ma-quote.steps';
-import { getQuote } from '../../helpers/steps/quote.steps';
+import { getQuote, createQuoteLineItem } from '../../helpers/steps/quote.steps';
 import { setupFrameworkContract, setWinResponsibleFields } from '../../helpers/steps/framework-contract.steps';
 
 // Source Quote used to seed line-item pricing data (same one used by the proven
@@ -392,13 +392,42 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Contrato Marco', () => {
-    // BLOCKED: a second QuoteLineItem repeating the same PricebookEntryId on the same Framework
-    // Contract Quote hits "The price data inserted is not correct" (generic validation, no field
-    // named) even with the exact same field recipe that worked for the first line — needs more
-    // investigation into what a "repeated product" line requires beyond a fresh product line.
-    it.skip('[e2e] @C528 Verificar que se pueden configurar en el contrato marco varios productos repetidos, tanto principales como complementos', async () => {
-      // TODO: implementar — ver nota arriba sobre el error de validación en la segunda línea repetida.
-    });
+    it('[e2e] @C528 Verificar que se pueden configurar en el contrato marco varios productos repetidos, tanto principales como complementos', async () => {
+      const report = new TestReport('C528 — Configurar productos repetidos en el Contrato Marco');
+      try {
+        const refs = getOrgRefs('RG', 'INS');
+        const { quoteId } = await setupFrameworkContract(report);
+
+        // PriceValidation VR: Price_Difference_Validation__c (TaxesTotal__c + Fee__c + Subtotal__c
+        // - UnitPrice, Fee__c excluded for Framework_Contract) must be 0. UnitPrice on this object
+        // represents the LINE TOTAL, not a per-unit price — so "repeated products" means separate
+        // Quantity=1 lines on the same PricebookEntry, not one line with Quantity>1.
+        for (let i = 2; i <= 3; i++) {
+          const lineItemId = await createQuoteLineItem({
+            QuoteId:            quoteId,
+            PricebookEntryId:   refs.qli.pricebookEntryId,
+            Quantity:           1,
+            UnitPrice:          120,
+            SelectedPrice__c:   120,
+            Asset__c:           refs.qli.assetId,
+            Description:        `E2E Contrato Marco — línea repetida ${i}`,
+            Subtotal__c:        120,
+            Discount__c:        0,
+            Activity__c:        '6100',
+            Actividad_LN__c:    '6100_1',
+            Bypass_Apex__c:     true,
+          });
+          report.step(`Añadir línea de producto repetida ${i}`, { 'LineItem Id': lineItemId, 'Quote Id': quoteId }, 'ok');
+        }
+
+        const lines = await sfQuery.query<{ Id: string }>(`SELECT Id FROM QuoteLineItem WHERE QuoteId = '${quoteId}'`);
+        expect(lines.length).toBe(3);
+        report.step('Verificar líneas repetidas configuradas', { 'Quote Id': quoteId, 'Líneas': String(lines.length) }, 'ok');
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
 
     it('[e2e] @C533 Verificar que se puede recuperar un proceso de aprobación de contrato marco solicitado', async () => {
       const report = new TestReport('C533 — Recuperar proceso de aprobación de Contrato Marco');
