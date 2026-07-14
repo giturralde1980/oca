@@ -763,18 +763,80 @@ describe('Funcional — UAT Base', () => {
 
   });
 
+  // RTO ("Revisión Técnica de Oferta") submission is unconditional once Quote.RTORegl__c=true —
+  // found via Tooling API by reading the "Aprobación RTO REGL" Flow's start-element entry
+  // criteria directly (filterLogic: RTORegl__c EqualTo true), same technique used for MA/INS.
   describe('Oferta comercial - RTO', () => {
-    it.skip('[e2e] @C556 Verificar que se lanza el proceso de aprobación por RTO al aprobar una oferta que requiere revisión', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C556 Verificar que se lanza el proceso de aprobación por RTO al aprobar una oferta que requiere revisión', async () => {
+      const report = new TestReport('C556 — RTORegl__c=true dispara la aprobación RTO');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
 
-    it.skip('[e2e] @C557 Verificar que al aceptar el RTO el aprobador se actualizan correctamente los campos y se notifica al comercial', async () => {
-      // TODO: implementar
-    });
+        await updateRecord('Quote', quoteId, { RTORegl__c: true });
+        report.step('Marcar Oferta como requiere revisión (RTORegl__c=true)', { 'Quote Id': quoteId }, 'ok');
 
-    it.skip('[e2e] @C558 Verificar que al rechazar el RTO el aprobador se actualizan correctamente los campos correspondientes', async () => {
-      // TODO: implementar
-    });
+        const approval = await waitForPendingApproval(quoteId);
+        expect(approval.processName).toBe('Aprobación RTO REGL');
+        report.step('Verificar que se lanzó el proceso de aprobación RTO', { 'Quote Id': quoteId, 'Proceso': approval.processName }, 'ok');
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
+
+    it('[e2e] @C557 Verificar que al aceptar el RTO el aprobador se actualizan correctamente los campos y se notifica al comercial', async () => {
+      const report = new TestReport('C557 — Aceptar RTO: campos actualizados correctamente');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        await updateRecord('Quote', quoteId, { RTORegl__c: true });
+
+        const approval = await waitForPendingApproval(quoteId);
+        const result = await approveWorkItem(approval.workItemId);
+        expect(result.instanceStatus).toBe('Approved');
+
+        const quote = await getQuote(quoteId);
+        expect(quote['Status']).toBe('Lista para enviar');
+        expect(quote['RTO_IsApproved__c']).toBe(true);
+        report.step(
+          'Verificar campos tras aceptar el RTO',
+          { 'Quote Id': quoteId, 'Status': quote['Status'] as string, 'RTO_IsApproved__c': String(quote['RTO_IsApproved__c']) },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
+
+    it('[e2e] @C558 Verificar que al rechazar el RTO el aprobador se actualizan correctamente los campos correspondientes', async () => {
+      const report = new TestReport('C558 — Rechazar RTO: campos actualizados correctamente');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        await updateRecord('Quote', quoteId, { RTORegl__c: true });
+
+        const approval = await waitForPendingApproval(quoteId);
+        const result = await rejectWorkItem(approval.workItemId);
+        expect(result.instanceStatus).toBe('Rejected');
+
+        const quote = await getQuote(quoteId);
+        expect(quote['Status']).toBe('Rechazada');
+        expect(quote['RTO_IsApproved__c']).toBe(false);
+        report.step(
+          'Verificar campos tras rechazar el RTO',
+          { 'Quote Id': quoteId, 'Status': quote['Status'] as string, 'RTO_IsApproved__c': String(quote['RTO_IsApproved__c']) },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        suite.add(report);
+      }
+    }, 60000);
 
   });
 
