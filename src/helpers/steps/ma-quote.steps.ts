@@ -27,7 +27,7 @@ export interface MAQuoteSetup {
   lineItemId: string;
 }
 
-export async function setupMAQuote(report: TestReport, assignedCommercialId: string): Promise<MAQuoteSetup> {
+export async function setupMAQuote(report: TestReport, assignedCommercialId: string, assetId?: string): Promise<MAQuoteSetup> {
   const refs = getOrgRefs('MA', 'INS');
 
   const oppId = await createOpportunity({
@@ -68,7 +68,7 @@ export async function setupMAQuote(report: TestReport, assignedCommercialId: str
     Quantity:           1,
     UnitPrice:          525,
     SelectedPrice__c:   525,
-    Asset__c:           refs.qli.assetId,
+    Asset__c:           assetId ?? refs.qli.assetId,
     Description:        'E2E MA — Inspección Acreditada (paquete)',
     Subtotal__c:        525,
     Discount__c:        0,

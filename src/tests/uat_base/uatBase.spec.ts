@@ -947,20 +947,24 @@ describe('Funcional — UAT Base', () => {
       }
     }, 180000);
 
-    // BLOCKED (C561-563): winning the MA/INS Quote is now solved (see C560), but these need
-    // deleting/reassigning the OrderItem package after Order creation and observing the
-    // resulting Installation_parameters__c change — not yet attempted.
-    it.skip('[e2e] @C561 Verificar que se elimina el parámetro de instalación al eliminar un paquete que lo genera, si no está asociado a otro pedido', async () => {
-      // TODO: implementar — reusar setupMAQuote/winMAQuoteAndGetOrder, luego borrar el OrderItem y verificar.
-    });
+    // NO AUTOMATIZABLE VIA REST de forma fiable (confirmado empíricamente, no solo "no probado
+    // todavía"): Installation_parameters__c.Asset__c es Master-Detail hacia Asset (cascadeDelete
+    // en el schema, vía Tooling API), pero el objeto NO tiene ninguna relación hacia OrderItem —
+    // ni lookup ni Master-Detail. Se probó ganando un Quote MA/INS contra un Asset recién creado
+    // (mismo RecordType 'Installation', misma Account que el Asset compartido de org-refs.ts):
+    // no se generó ningún Installation_parameters__c nuevo, mientras que el Asset compartido que
+    // usa C560 sí los muestra — lo que sugiere que esos registros son preexistentes de
+    // ejecuciones anteriores acumuladas sobre ese Asset de larga vida, no generados por el propio
+    // 'win' de la Quote. Sin poder reproducir la generación desde cero contra un Asset limpio, no
+    // hay forma fiable de observar por REST el efecto de borrar/reasignar el paquete (C561/C562),
+    // y probar el cascade-delete real de C563 exigiría borrar el Asset compartido usado por C560,
+    // rompiendo ese test. Necesitaría acceso a la app (Lightning/Aura) para confirmar el
+    // disparador real de creación antes de poder automatizar el borrado/reasignación por API.
+    it.todo('[e2e] @C561 Verificar que se elimina el parámetro de instalación al eliminar un paquete que lo genera, si no está asociado a otro pedido — NO AUTOMATIZABLE VIA REST DE FORMA FIABLE: ver nota del describe (Installation_parameters__c no tiene relación con OrderItem, y su generación real no es reproducible contra un Asset limpio)');
 
-    it.skip('[e2e] @C562 Verificar que se gestionan correctamente los parámetros de instalación al cambiar el activo de un paquete', async () => {
-      // TODO: implementar — reusar setupMAQuote/winMAQuoteAndGetOrder, luego cambiar Asset__c del OrderItem y verificar.
-    });
+    it.todo('[e2e] @C562 Verificar que se gestionan correctamente los parámetros de instalación al cambiar el activo de un paquete — NO AUTOMATIZABLE VIA REST DE FORMA FIABLE: mismo motivo que C561 (ver nota del describe)');
 
-    it.skip('[e2e] @C563 Verificar que se gestionan correctamente los parámetros de instalación al eliminar el activo asociado a un paquete', async () => {
-      // TODO: implementar — reusar setupMAQuote/winMAQuoteAndGetOrder, luego eliminar el Asset y verificar.
-    });
+    it.todo('[e2e] @C563 Verificar que se gestionan correctamente los parámetros de instalación al eliminar el activo asociado a un paquete — NO AUTOMATIZABLE VIA REST DE FORMA FIABLE: el cascade-delete de Asset→Installation_parameters__c sí está garantizado por el schema (Master-Detail), pero probarlo exigiría borrar el Asset compartido de org-refs.ts usado por C560, rompiendo ese test; ver nota del describe');
 
   });
 
