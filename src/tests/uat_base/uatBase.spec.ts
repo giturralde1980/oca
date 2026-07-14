@@ -973,9 +973,69 @@ describe('Funcional — UAT Base', () => {
       // TODO: implementar
     });
 
-    it.skip('[e2e] @C566 Verificar que se puede configurar un pedido de venta con productos del catálogo y del contrato marco correspondiente', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C566 Verificar que se puede configurar un pedido de venta con productos del catálogo y del contrato marco correspondiente', async () => {
+      const report = new TestReport('C566 — Pedido con línea de catálogo + línea de Contrato Marco');
+      try {
+        // Win a Framework Contract first, so we have a real 'won' Contrato Marco to link a line to.
+        const { quoteId: contractQuoteId } = await setupFrameworkContract(report);
+        await changeQuoteStatus(contractQuoteId, 'Generada', report);
+        const contractApproval = await waitForPendingApproval(contractQuoteId);
+        await approveWorkItem(contractApproval.workItemId);
+        await setWinResponsibleFields(contractQuoteId, report);
+        await updateRecord('Quote', contractQuoteId, { Status: 'won' }, 60000);
+        report.step('Contrato Marco ganado', { 'Quote Id': contractQuoteId }, 'ok');
+
+        // Build a normal Comercial Offer quote — its first (source-cloned) line item already
+        // defaults RelatedContract__c to itself, i.e. "producto de catálogo" (no framework
+        // contract). Reused as-is, no changes needed.
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+
+        // Second line, same product/pricing as the source line (PriceValidation VR needs
+        // Taxes__c/TaxesTotal__c/Fee__c to match too, not just Subtotal__c/UnitPrice), but linked
+        // to the won Framework Contract via RelatedContract__c.
+        const contractLineId = await createQuoteLineItem({
+          QuoteId:            quoteId,
+          PricebookEntryId:   sourceLI.PricebookEntryId,
+          Quantity:           sourceLI.Quantity         ?? 1,
+          UnitPrice:          sourceLI.UnitPrice        ?? 0,
+          SelectedPrice__c:   sourceLI.SelectedPrice__c ?? 0,
+          Activity__c:        sourceLI.Activity__c      ?? '',
+          Subactivity__c:     sourceLI.Subactivity__c   ?? '',
+          Holder__c:          sourceLI.Holder__c        ?? null,
+          Asset__c:           sourceLI.Asset__c         ?? null,
+          Actividad_LN__c:    sourceLI.Actividad_LN__c  ?? '',
+          Discount__c:        sourceLI.Discount__c      ?? 0,
+          Subtotal__c:        sourceLI.Subtotal__c      ?? 0,
+          Taxes__c:           sourceLI.Taxes__c         ?? 0,
+          TaxesTotal__c:      sourceLI.TaxesTotal__c    ?? 0,
+          Fee__c:             sourceLI.Fee__c           ?? 0,
+          Description:        'E2E — línea de Contrato Marco',
+          Bypass_Apex__c:     true,
+          RelatedContract__c: contractQuoteId,
+        });
+        report.step('Añadir línea vinculada al Contrato Marco', { 'LineItem Id': contractLineId, 'Quote Id': quoteId, 'Contrato Marco': contractQuoteId }, 'ok');
+
+        const lines = await sfQuery.query<{ Id: string; RelatedContract__c: string }>(
+          `SELECT Id, RelatedContract__c FROM QuoteLineItem WHERE QuoteId = '${quoteId}'`
+        );
+        expect(lines.length).toBe(2);
+
+        const catalogLine  = lines.find(l => l.RelatedContract__c === quoteId);
+        const contractLine = lines.find(l => l.RelatedContract__c === contractQuoteId);
+        expect(catalogLine).toBeTruthy();
+        expect(contractLine).toBeTruthy();
+        report.step(
+          'Verificar pedido configurado con línea de catálogo y línea de Contrato Marco',
+          { 'Quote Id': quoteId, 'Línea catálogo': catalogLine!.Id, 'Línea Contrato Marco': contractLine!.Id },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 60000);
 
   });
 
