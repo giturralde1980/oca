@@ -80,6 +80,7 @@ describe('Funcional — UAT Base', () => {
         report.step('Verificar Lead creado', { 'Lead Id': leadId, 'IsConverted': String(fetched['IsConverted']) }, 'ok');
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
         if (leadId) await deleteLead(leadId).catch(() => {});
       }
@@ -114,6 +115,7 @@ describe('Funcional — UAT Base', () => {
         report.step('Verificar Contacto generado', { 'Contact Id': result.contactId, 'AccountId': contact['AccountId'] as string }, 'ok');
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
       // No cleanup — converted leads (and the resulting Account/Contact/Opportunity) cannot be deleted cleanly.
@@ -137,6 +139,7 @@ describe('Funcional — UAT Base', () => {
         expect(account['AccountNumber']).toBeTruthy();
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -175,6 +178,7 @@ describe('Funcional — UAT Base', () => {
         );
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 90000);
@@ -214,6 +218,7 @@ describe('Funcional — UAT Base', () => {
         );
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 90000);
@@ -240,6 +245,7 @@ describe('Funcional — UAT Base', () => {
         expect(asset['RecordTypeId']).toBe(ASSET_RECORD_TYPES.CENTER);
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -266,6 +272,7 @@ describe('Funcional — UAT Base', () => {
         expect(asset['RecordTypeId']).toBe(ASSET_RECORD_TYPES.INTERNATIONAL_CENTER);
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -288,6 +295,7 @@ describe('Funcional — UAT Base', () => {
         expect(asset['RecordTypeId']).toBe(ASSET_RECORD_TYPES.INSTALLATION);
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -319,6 +327,7 @@ describe('Funcional — UAT Base', () => {
         expect(installation['RecordTypeId']).toBe(ASSET_RECORD_TYPES.INSTALLATION);
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -355,6 +364,7 @@ describe('Funcional — UAT Base', () => {
         expect(account['RecordTypeId']).toBe(ACCOUNT_RECORD_TYPES.EXPLOTACION);
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -373,6 +383,7 @@ describe('Funcional — UAT Base', () => {
         expect(account['RecordTypeId']).toBe(ACCOUNT_RECORD_TYPES.DELEGACION);
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -425,6 +436,7 @@ describe('Funcional — UAT Base', () => {
         report.step('Verificar líneas repetidas configuradas', { 'Quote Id': quoteId, 'Líneas': String(lines.length) }, 'ok');
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -445,6 +457,7 @@ describe('Funcional — UAT Base', () => {
         );
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -472,6 +485,7 @@ describe('Funcional — UAT Base', () => {
         report.step('Verificar que se lanzó el proceso de aprobación', { 'Quote Id': quoteId, 'Proceso': approval.processName }, 'ok');
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -495,6 +509,7 @@ describe('Funcional — UAT Base', () => {
         report.step('Verificar estado del Contrato Marco tras aceptación', { 'Quote Id': quoteId, 'Status': quote['Status'] as string }, 'ok');
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -518,6 +533,7 @@ describe('Funcional — UAT Base', () => {
         report.step('Verificar estado del Contrato Marco tras rechazo', { 'Quote Id': quoteId, 'Status': quote['Status'] as string }, 'ok');
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -543,6 +559,7 @@ describe('Funcional — UAT Base', () => {
         expect(quote['Status']).toBe('won');
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -607,6 +624,7 @@ describe('Funcional — UAT Base', () => {
         );
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -658,6 +676,7 @@ describe('Funcional — UAT Base', () => {
         );
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -683,6 +702,7 @@ describe('Funcional — UAT Base', () => {
         );
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -706,6 +726,7 @@ describe('Funcional — UAT Base', () => {
         report.step('Verificar estado de la Oferta tras aceptación', { 'Quote Id': quoteId, 'Status': quote['Status'] as string }, 'ok');
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -732,6 +753,7 @@ describe('Funcional — UAT Base', () => {
         report.step('Verificar estado de la Oferta tras rechazo', { 'Quote Id': quoteId, 'Status': quote['Status'] as string }, 'ok');
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -797,6 +819,7 @@ describe('Funcional — UAT Base', () => {
         report.step('Verificar que se lanzó el proceso de aprobación RTO', { 'Quote Id': quoteId, 'Proceso': approval.processName }, 'ok');
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -823,6 +846,7 @@ describe('Funcional — UAT Base', () => {
         );
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -849,6 +873,7 @@ describe('Funcional — UAT Base', () => {
         );
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -883,6 +908,7 @@ describe('Funcional — UAT Base', () => {
         report.step('Verificar OT generada', { 'Order Id': orderId, 'WorkOrder Id': workOrderId ?? undefined }, 'ok');
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 180000);
@@ -914,6 +940,7 @@ describe('Funcional — UAT Base', () => {
         );
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 180000);
@@ -1014,6 +1041,7 @@ describe('Funcional — UAT Base', () => {
         );
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 180000);
@@ -1109,6 +1137,7 @@ describe('Funcional — UAT Base', () => {
         report.step('Verificar conteo de OTs hijas', { 'WorkOrder Id': parentWorkOrderId!, 'Conteo': String(childCount) }, 'ok');
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 180000);
@@ -1179,6 +1208,7 @@ describe('Funcional — UAT Base', () => {
       } finally {
         if (dispatchedSaId) await releaseServiceAppointment(dispatchedSaId).catch(() => {});
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 180000);
@@ -1214,6 +1244,7 @@ describe('Funcional — UAT Base', () => {
         report.step('Verificar OT en estado Programada', { 'WorkOrder Id': workOrderId!, 'Status': String(workOrderAfter['Status']) }, 'ok');
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 180000);
@@ -1455,6 +1486,7 @@ describe('Funcional — UAT Base', () => {
         expect(cvm?.Equipment__c).toBe(assetId);
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);
@@ -1479,6 +1511,7 @@ describe('Funcional — UAT Base', () => {
         expect(audit['Status__c']).toBe('Pendiente de resolución');
       } finally {
         report.finish();
+        report.logForTestRail();
         suite.add(report);
       }
     }, 60000);

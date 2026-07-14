@@ -48,6 +48,42 @@ export class TestReport {
   get durationMs(): number { return (this.endTime?.getTime() ?? Date.now()) - this.startTime.getTime(); }
   get passed():     boolean { return this._steps.every(s => s.status === 'ok'); }
   get steps():      Step[]  { return this._steps; }
+
+  /**
+   * One-line human-readable digest of every step (name + key data), for use as a TestRail
+   * comment. Printed via console.log with a marker prefix so the out-of-process TestRail
+   * reporter (which never sees this TestReport instance directly — it only reads Jest's
+   * captured console output) can pick it up and attach it to the result, on passed tests too,
+   * not just failures.
+   */
+  toComment(): string {
+    return this._steps
+      .map(s => {
+        const icon = s.status === 'ok' ? '✓' : '✗';
+        const data = s.data
+          ? ' (' + Object.entries(s.data).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}: ${v}`).join(', ') + ')'
+          : '';
+        return `${icon} ${s.name}${data}`;
+      })
+      .join('\n');
+  }
+
+  /**
+   * Appends toComment() to a shared temp file for the TestRail reporter to pick up — call once
+   * per test. Jest's `testResult.console` (which would let a reporter read a test's console.log
+   * output directly) comes back `undefined` in this project's Jest setup, so the reporter
+   * (running in Jest's main process) can't observe console output from a test (running in a
+   * worker process) any other way than a shared file.
+   */
+  logForTestRail(): void {
+    const dir = path.join(process.cwd(), 'reports', '.tmp');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(
+      path.join(dir, 'testrail-comments.jsonl'),
+      JSON.stringify({ title: this.title, comment: this.toComment() }) + '\n',
+      'utf8',
+    );
+  }
 }
 
 // ─── HTML helpers ────────────────────────────────────────────────────────────

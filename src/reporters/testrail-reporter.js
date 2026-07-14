@@ -2,6 +2,10 @@
 
 const https = require('https');
 const { URL } = require('url');
+const fs   = require('fs');
+const path = require('path');
+
+const STEP_SUMMARY_FILE = path.join(process.cwd(), 'reports', '.tmp', 'testrail-comments.jsonl');
 
 const TESTRAIL_SUITE_ID           = 6;
 const TESTRAIL_PLAN_ID            = 113; // "UAT Base" plan — https://oca.testrail.io/index.php?/plans/view/113
@@ -197,6 +201,8 @@ class TestRailReporter {
 
   async onRunStart() {
     if (!this.enabled) return;
+    // Fresh start each run — see the comment on STEP_SUMMARY_FILE / onTestResult below.
+    try { fs.rmSync(STEP_SUMMARY_FILE, { force: true }); } catch { /* ignore */ }
     try {
       const env  = process.env.TEST_ENV ?? 'qa';
       const date = new Date().toISOString().slice(0, 16).replace('T', ' ');
@@ -219,6 +225,23 @@ class TestRailReporter {
 
   async onTestResult(_test, result) {
     if (!this.enabled || !this.runId) return;
+
+    // Tests run in a worker process — Jest's `testResult.console` (which would let a reporter
+    // read a test's console.log output) comes back undefined in this project's setup, so
+    // TestReport#logForTestRail writes to a shared JSONL file instead (see report.helper.ts).
+    // TestReport titles never match the Jest `it()` title (they're a separate free-text
+    // description, e.g. "C556 — RTORegl__c=true..."), so correlate by the "C<number>" case id
+    // embedded in both instead of exact text.
+    const stepSummaryByCaseId = {};
+    try {
+      const lines = fs.readFileSync(STEP_SUMMARY_FILE, 'utf8').split('\n').filter(Boolean);
+      for (const line of lines) {
+        const { title, comment } = JSON.parse(line);
+        const match = /^C(\d+)/.exec(title);
+        if (match) stepSummaryByCaseId[match[1]] = comment;
+      }
+    } catch { /* file not created yet — no summaries logged so far */ }
+
     for (const t of result.testResults) {
       const title  = t.title
         .replace(/^\[e2e\]\s+@C\d+\s+/, '')
@@ -233,7 +256,7 @@ class TestRailReporter {
 
       const comment = t.status === 'failed'
         ? t.failureMessages.join('\n').slice(0, 1000)
-        : undefined;
+        : stepSummaryByCaseId[caseId] || undefined;
 
       try {
         await trRequest('POST', `add_result_for_case/${this.runId}/${caseId}`, { status_id: status, comment });
