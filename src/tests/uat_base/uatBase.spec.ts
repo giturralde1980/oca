@@ -37,6 +37,8 @@ import {
   createWorkOrder,
   countChildWorkOrders,
   getOrder,
+  submitWorkOrderForRTE,
+  waitForWorkOrderByOrderId,
 } from '../../helpers/steps/order.steps';
 import { sfQuery } from '../../helpers/salesforce-query.helper';
 import { updateRecord } from '../../helpers/salesforce-crud.helper';
@@ -1049,17 +1051,91 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Orden de trabajo - RTE', () => {
-    it.skip('[e2e] @C577 Verificar que al finalizar una OT con \'Requiere RTE\' se lanza el proceso de aprobación al responsable de la delegación', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C577 Verificar que al finalizar una OT con \'Requiere RTE\' se lanza el proceso de aprobación al responsable de la delegación', async () => {
+      const report = new TestReport('C577 — RTERequired__c=true al finalizar la OT dispara la aprobación RTE');
+      try {
+        const { quoteId } = await setupMAQuote(report, ACTIVE_COMMERCIAL_USER_ID);
+        const orderId = await winMAQuoteAndGetOrder(quoteId, report);
 
-    it.skip('[e2e] @C578 Verificar que al aceptar el RTE el aprobador se actualizan correctamente los campos correspondientes', async () => {
-      // TODO: implementar
-    });
+        const workOrderId = await waitForWorkOrderByOrderId(orderId);
+        expect(workOrderId).toBeTruthy();
+        report.step('Verificar OT generada', { 'Order Id': orderId, 'WorkOrder Id': workOrderId! }, 'ok');
 
-    it.skip('[e2e] @C579 Verificar que al rechazar el RTE el aprobador se actualizan correctamente los campos correspondientes', async () => {
-      // TODO: implementar
-    });
+        await submitWorkOrderForRTE(workOrderId!, report);
+
+        const approval = await waitForPendingApproval(workOrderId!);
+        expect(approval.processName).toBe('RTE Approval');
+        report.step('Verificar que se lanzó el proceso de aprobación RTE', { 'WorkOrder Id': workOrderId!, 'Proceso': approval.processName }, 'ok');
+
+        const workOrder = await getWorkOrder(workOrderId!);
+        expect(workOrder['RTEResponsible__c']).toBeTruthy();
+        report.step(
+          'Verificar responsable de delegación autocompletado',
+          { 'WorkOrder Id': workOrderId!, 'RTEResponsible__c': workOrder['RTEResponsible__c'] as string },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 120000);
+
+    it('[e2e] @C578 Verificar que al aceptar el RTE el aprobador se actualizan correctamente los campos correspondientes', async () => {
+      const report = new TestReport('C578 — Aceptar RTE: campos actualizados correctamente');
+      try {
+        const { quoteId } = await setupMAQuote(report, ACTIVE_COMMERCIAL_USER_ID);
+        const orderId = await winMAQuoteAndGetOrder(quoteId, report);
+        const workOrderId = await waitForWorkOrderByOrderId(orderId);
+        expect(workOrderId).toBeTruthy();
+
+        await submitWorkOrderForRTE(workOrderId!, report);
+        const approval = await waitForPendingApproval(workOrderId!);
+
+        const result = await approveWorkItem(approval.workItemId);
+        expect(result.instanceStatus).toBe('Approved');
+
+        const workOrder = await getWorkOrder(workOrderId!);
+        expect(workOrder['RTEApproved__c']).toBe(true);
+        report.step(
+          'Verificar campos tras aceptar el RTE',
+          { 'WorkOrder Id': workOrderId!, 'RTEApproved__c': String(workOrder['RTEApproved__c']) },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 120000);
+
+    it('[e2e] @C579 Verificar que al rechazar el RTE el aprobador se actualizan correctamente los campos correspondientes', async () => {
+      const report = new TestReport('C579 — Rechazar RTE: campos actualizados correctamente');
+      try {
+        const { quoteId } = await setupMAQuote(report, ACTIVE_COMMERCIAL_USER_ID);
+        const orderId = await winMAQuoteAndGetOrder(quoteId, report);
+        const workOrderId = await waitForWorkOrderByOrderId(orderId);
+        expect(workOrderId).toBeTruthy();
+
+        await submitWorkOrderForRTE(workOrderId!, report);
+        const approval = await waitForPendingApproval(workOrderId!);
+
+        const result = await rejectWorkItem(approval.workItemId);
+        expect(result.instanceStatus).toBe('Rejected');
+
+        const workOrder = await getWorkOrder(workOrderId!);
+        expect(workOrder['RTEApproved__c']).toBe(false);
+        report.step(
+          'Verificar campos tras rechazar el RTE',
+          { 'WorkOrder Id': workOrderId!, 'RTEApproved__c': String(workOrder['RTEApproved__c']) },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 120000);
 
   });
 

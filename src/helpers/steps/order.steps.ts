@@ -133,6 +133,19 @@ export async function queryWorkOrderByOrderId(orderId: string): Promise<string |
   return wo?.Id ?? null;
 }
 
+/** Polls until the WorkOrder synced from an Order shows up (MA/INS Order→WorkOrder sync is async). */
+export async function waitForWorkOrderByOrderId(
+  orderId: string,
+  { maxAttempts = 10, delayMs = 5000 }: { maxAttempts?: number; delayMs?: number } = {},
+): Promise<string> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const workOrderId = await queryWorkOrderByOrderId(orderId);
+    if (workOrderId) return workOrderId;
+    await new Promise(r => setTimeout(r, delayMs));
+  }
+  throw new Error(`WorkOrder not synced within ${(maxAttempts * delayMs) / 1000}s for Order ${orderId}`);
+}
+
 export async function getWorkOrder(id: string): Promise<Record<string, unknown>> {
   const wo = await pactum.spec()
     .get(`/sobjects/WorkOrder/${id}`)
@@ -283,4 +296,21 @@ export async function assignTechnicianToWorkOrder(
     { 'WorkOrder Id': workOrderId, 'Technician__c': TECHNICIAN_ID, ...(activoId ? { 'AssetId': activoId } : {}) },
     'ok',
   );
+}
+
+/**
+ * Finalizes a WorkOrder with 'Requiere RTE', triggering the WO_ApprovalProcess Flow
+ * (found via Tooling API — not documented anywhere else) that submits the 'RTE Approval'
+ * process. That Flow's entry criteria is RTERequired__c=true AND Status='4' (Complete), but
+ * NBK_WorkOrderTrigger also cascades any WO status change onto its ServiceAppointment, and a
+ * Validation Rule on ServiceAppointment rejects that cascade unless AssignedInternalTechnician__c
+ * or AssignedFreelance__c is already set — hence AssignedInspector__c must be set on the WO
+ * *first*, in a separate update, before flipping RTERequired__c/Status.
+ */
+export async function submitWorkOrderForRTE(workOrderId: string, report: TestReport): Promise<void> {
+  await updateRecord('WorkOrder', workOrderId, { AssignedInspector__c: TECHNICIAN_ID });
+  report.step('Asignar AssignedInspector__c en la OT', { 'WorkOrder Id': workOrderId, 'AssignedInspector__c': TECHNICIAN_ID }, 'ok');
+
+  await updateRecord('WorkOrder', workOrderId, { RTERequired__c: true, Status: '4' });
+  report.step('Finalizar OT marcando \'Requiere RTE\' (RTERequired__c=true, Status=Complete)', { 'WorkOrder Id': workOrderId }, 'ok');
 }
