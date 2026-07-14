@@ -144,7 +144,11 @@ const CASE_MAP = {
   'Verificar que se envía el transaccional al titular y al prescriptor 6 meses antes de la próxima inspección': 640,
 };
 
-const STATUS = { PASSED: 1, FAILED: 5, SKIPPED: 4 };
+// TestRail default status IDs: 1 Passed, 2 Blocked, 3 Untested, 4 Retest, 5 Failed.
+// BLOCKED is used for Jest's `it.todo` — tests confirmed architecturally unreachable via REST
+// (e.g. logic that only lives behind an Aura/LWC remote-action), as opposed to SKIPPED
+// (`it.skip`, i.e. "not automated yet" without a confirmed hard blocker).
+const STATUS = { PASSED: 1, BLOCKED: 2, FAILED: 5, SKIPPED: 4 };
 
 function trRequest(method, path, body) {
   const baseUrl  = process.env.TESTRAIL_URL;
@@ -216,11 +220,14 @@ class TestRailReporter {
   async onTestResult(_test, result) {
     if (!this.enabled || !this.runId) return;
     for (const t of result.testResults) {
-      const title  = t.title.replace(/^\[e2e\]\s+@C\d+\s+/, '');
+      const title  = t.title
+        .replace(/^\[e2e\]\s+@C\d+\s+/, '')
+        .replace(/\s+—\s+NO AUTOMATIZABLE.*$/, '');
       const caseId = CASE_MAP[title];
       if (!caseId) continue;
 
       const status  = t.status === 'passed'  ? STATUS.PASSED
+                    : t.status === 'todo'    ? STATUS.BLOCKED
                     : t.status === 'pending' ? STATUS.SKIPPED
                     : STATUS.FAILED;
 
