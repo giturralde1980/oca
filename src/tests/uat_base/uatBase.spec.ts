@@ -1457,17 +1457,69 @@ describe('Funcional — UAT Base', () => {
       // TODO: implementar
     });
 
-    it.skip('[e2e] @C605 Verificar que se puede albaranar una OT correctamente', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C605 Verificar que se puede albaranar una OT correctamente', async () => {
+      const report = new TestReport('C605 — Albaranar una OT (Waybilled__c=true)');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        const [, { orderId }] = await Promise.all([
+          changeIndustriaQuoteStatusToWon(quoteId, report),
+          waitAndPatchIndustriaOrderActivity(quoteId, report),
+        ]);
+        await verifyOrderSyncedByOrderId(orderId, { initialDelayMs: 15000 });
+
+        const workOrderId = await queryWorkOrderByOrderId(orderId);
+        expect(workOrderId).toBeTruthy();
+        report.step('Verificar OT generada', { 'Order Id': orderId, 'WorkOrder Id': workOrderId! }, 'ok');
+
+        await updateRecord('WorkOrder', workOrderId!, { Waybilled__c: true });
+        report.step('Albaranar la OT (Waybilled__c=true)', { 'WorkOrder Id': workOrderId! }, 'ok');
+
+        const workOrder = await getWorkOrder(workOrderId!);
+        expect(workOrder['Waybilled__c']).toBe(true);
+        report.step('Verificar OT albaranada', { 'WorkOrder Id': workOrderId!, 'Waybilled__c': String(workOrder['Waybilled__c']) }, 'ok');
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 180000);
 
     it.skip('[e2e] @C606 Verificar que se impide modificar el porcentaje de producción de una OT ya albaranada', async () => {
       // TODO: implementar
     });
 
-    it.skip('[e2e] @C607 Verificar que se puede desalbaranar una OT correctamente', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C607 Verificar que se puede desalbaranar una OT correctamente', async () => {
+      const report = new TestReport('C607 — Desalbaranar una OT ya albaranada (Waybilled__c=false)');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        const [, { orderId }] = await Promise.all([
+          changeIndustriaQuoteStatusToWon(quoteId, report),
+          waitAndPatchIndustriaOrderActivity(quoteId, report),
+        ]);
+        await verifyOrderSyncedByOrderId(orderId, { initialDelayMs: 15000 });
+
+        const workOrderId = await queryWorkOrderByOrderId(orderId);
+        expect(workOrderId).toBeTruthy();
+
+        await updateRecord('WorkOrder', workOrderId!, { Waybilled__c: true });
+        report.step('Albaranar la OT (paso previo)', { 'WorkOrder Id': workOrderId! }, 'ok');
+
+        await updateRecord('WorkOrder', workOrderId!, { Waybilled__c: false });
+        report.step('Desalbaranar la OT (Waybilled__c=false)', { 'WorkOrder Id': workOrderId! }, 'ok');
+
+        const workOrder = await getWorkOrder(workOrderId!);
+        expect(workOrder['Waybilled__c']).toBe(false);
+        report.step('Verificar OT desalbaranada', { 'WorkOrder Id': workOrderId!, 'Waybilled__c': String(workOrder['Waybilled__c']) }, 'ok');
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 180000);
 
     it.skip('[e2e] @C608 Verificar que el estado de la línea de pedido cambia a \'Realizado\' al albaranar todas sus OTs', async () => {
       // TODO: implementar
