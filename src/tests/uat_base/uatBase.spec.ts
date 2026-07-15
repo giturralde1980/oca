@@ -1902,29 +1902,25 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Albaranado - ZOBR', () => {
-    it.skip('[e2e] @C599 Verificar que se generan correctamente las N OTs con sus hitos al crear líneas de pedido con complemento en un pedido tipo ZOBR', async () => {
-      // TODO: implementar
-    });
+    // C599, C601, C602, C604 dependen de MilestoneNumber__c/Milestones_Sync__c, que solo se
+    // completan mediante un callout real a SAP (NBK_MilestoneIntegrationWrapper — confirmado
+    // IsValid=true, es decir sano, no roto: simplemente es un DTO de callout sin acción
+    // invocable por REST). Probado empíricamente: un pedido ZOBR con complemento genera
+    // correctamente sus N OTs (2, reutilizando la misma infraestructura de C576), pero
+    // WorkOrder.MilestoneNumber__c queda null en ambas — nunca se completa sin el round-trip SAP
+    // real. C600 y C603 son además puramente de UI ("aparece el botón"/"aparece el menú"), sin
+    // correlato en backend verificable por REST.
+    it.todo('[e2e] @C599 Verificar que se generan correctamente las N OTs con sus hitos al crear líneas de pedido con complemento en un pedido tipo ZOBR — PARCIAL: las N OTs se generan correctamente (confirmado, ver C576), pero sus hitos (WorkOrder.MilestoneNumber__c) no se completan sin un callout real a SAP');
 
-    it.skip('[e2e] @C600 Verificar que aparece el botón \'Sincronizar\' en la línea de pedido para sincronizar los pesos de los hitos', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C600 Verificar que aparece el botón \'Sincronizar\' en la línea de pedido para sincronizar los pesos de los hitos — NO AUTOMATIZABLE VIA REST: es un elemento de UI sin correlato en backend verificable por REST');
 
-    it.skip('[e2e] @C601 Verificar que se impide sincronizar los pesos de los hitos si la suma de porcentajes de producción no es 100%', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C601 Verificar que se impide sincronizar los pesos de los hitos si la suma de porcentajes de producción no es 100% — NO CONFIRMADO POR REST: depende del mismo callout a SAP no disparable por REST que C599/C602');
 
-    it.skip('[e2e] @C602 Verificar que se pueden sincronizar con SAP los pesos de los hitos cuando la suma de porcentajes es 100%', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C602 Verificar que se pueden sincronizar con SAP los pesos de los hitos cuando la suma de porcentajes es 100% — NO CONFIRMADO POR REST: NBK_MilestoneIntegrationWrapper es un DTO de callout, no una acción invocable por REST (clase sana, IsValid=true, simplemente no hay endpoint que forzar)');
 
-    it.skip('[e2e] @C603 Verificar que el menú de albaranado de la OT solo aparece cuando la sincronización de hitos ha sido exitosa', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C603 Verificar que el menú de albaranado de la OT solo aparece cuando la sincronización de hitos ha sido exitosa — NO AUTOMATIZABLE VIA REST: es un elemento de UI sin correlato en backend verificable por REST');
 
-    it.skip('[e2e] @C604 Verificar que se impide albaranar las OTs al modificar el peso de alguna de ellas hasta volver a sincronizar', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C604 Verificar que se impide albaranar las OTs al modificar el peso de alguna de ellas hasta volver a sincronizar — NO CONFIRMADO POR REST: depende del mismo mecanismo de sincronización de hitos no disparable por REST (ver C599-602)');
 
     it('[e2e] @C605 Verificar que se puede albaranar una OT correctamente', async () => {
       const report = new TestReport('C605 — Albaranar una OT (Waybilled__c=true)');
