@@ -1363,9 +1363,49 @@ describe('Funcional — UAT Base', () => {
       // TODO: implementar
     });
 
-    it.skip('[e2e] @C588 Verificar que al crear una segunda cita de servicio, el estado de la OT principal permanece inalterado', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C588 Verificar que al crear una segunda cita de servicio, el estado de la OT principal permanece inalterado', async () => {
+      const report = new TestReport('C588 — Crear segunda cita de servicio no altera la OT principal');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        const [, { orderId }] = await Promise.all([
+          changeIndustriaQuoteStatusToWon(quoteId, report),
+          waitAndPatchIndustriaOrderActivity(quoteId, report),
+        ]);
+        await verifyOrderSyncedByOrderId(orderId, { initialDelayMs: 15000 });
+
+        const workOrderId = await queryWorkOrderByOrderId(orderId);
+        expect(workOrderId).toBeTruthy();
+
+        const workOrderBefore = await getWorkOrder(workOrderId!);
+        const statusBefore = workOrderBefore['Status'];
+        report.step('Capturar estado inicial de la OT', { 'WorkOrder Id': workOrderId!, 'Status': String(statusBefore) }, 'ok');
+
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(10, 0, 0, 0);
+        const dueDate = new Date(tomorrow.getTime() + 30 * 60 * 1000);
+        const secondSaId = await createServiceAppointment({
+          ParentRecordId:    workOrderId,
+          EarliestStartTime: tomorrow.toISOString(),
+          DueDate:           dueDate.toISOString(),
+        });
+        report.step('Crear segunda ServiceAppointment (misma OT)', { 'SA Id': secondSaId, 'WorkOrder Id': workOrderId! }, 'ok');
+
+        const workOrderAfter = await getWorkOrder(workOrderId!);
+        expect(workOrderAfter['Status']).toBe(statusBefore);
+        report.step(
+          'Verificar estado de la OT sin alterar',
+          { 'WorkOrder Id': workOrderId!, 'Status antes': String(statusBefore), 'Status después': String(workOrderAfter['Status']) },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 180000);
 
   });
 
