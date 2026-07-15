@@ -1539,17 +1539,46 @@ describe('Funcional — UAT Base', () => {
       // combinación de Delegation/Society/Activity cuyo Pedido sí sincronice correctamente.
     });
 
-    it.skip('[e2e] @C583 Verificar que al finalizar una OT se puede albaranar manualmente la línea de pedido', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C583 Verificar que al finalizar una OT se puede albaranar manualmente la línea de pedido', async () => {
+      const report = new TestReport('C583 — Finalizar la OT y albaranar manualmente la línea de pedido');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        const [, { orderId, assetId }] = await Promise.all([
+          changeIndustriaQuoteStatusToWon(quoteId, report),
+          waitAndPatchIndustriaOrderActivity(quoteId, report),
+        ]);
+        await verifyOrderSyncedByOrderId(orderId, { initialDelayMs: 15000 });
 
-    it.skip('[e2e] @C584 Verificar que al finalizar una OT se albarana automáticamente el hito correspondiente', async () => {
-      // TODO: implementar
-    });
+        const workOrderId = await queryWorkOrderByOrderId(orderId);
+        expect(workOrderId).toBeTruthy();
+        const [item] = await sfQuery.query<{ Id: string }>(`SELECT Id FROM OrderItem WHERE OrderId = '${orderId}'`);
+        expect(item).toBeTruthy();
 
-    it.skip('[e2e] @C585 Verificar que al finalizar una OT se puede albaranar manualmente el hito correspondiente', async () => {
-      // TODO: implementar
-    });
+        await finalizeWorkOrderWithInspectionData(workOrderId!, assetId, report);
+        const workOrder = await getWorkOrder(workOrderId!);
+        expect(workOrder['Status']).toBe('4');
+
+        await updateRecord('OrderItem', item.Id, { Waybilled__c: true });
+        report.step('Albaranar manualmente la línea de pedido', { 'OrderItem Id': item.Id, 'WorkOrder Id': workOrderId! }, 'ok');
+
+        const [after] = await sfQuery.query<{ Waybilled__c: boolean }>(`SELECT Waybilled__c FROM OrderItem WHERE Id = '${item.Id}'`);
+        expect(after.Waybilled__c).toBe(true);
+        report.step('Verificar línea albaranada', { 'OrderItem Id': item.Id, 'Waybilled__c': String(after.Waybilled__c) }, 'ok');
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 180000);
+
+    // C584/C585 dependen del "hito correspondiente" (WorkOrder.MilestoneNumber__c), que según lo
+    // confirmado en C599-604 solo se completa mediante un callout real a SAP
+    // (NBK_MilestoneIntegrationWrapper) — no disparable por REST.
+    it.todo('[e2e] @C584 Verificar que al finalizar una OT se albarana automáticamente el hito correspondiente — NO CONFIRMADO POR REST: depende de WorkOrder.MilestoneNumber__c, que solo se completa vía callout SAP (ver nota de C599-604)');
+
+    it.todo('[e2e] @C585 Verificar que al finalizar una OT se puede albaranar manualmente el hito correspondiente — NO CONFIRMADO POR REST: mismo motivo que C584 (MilestoneNumber__c depende de un callout SAP)');
 
     // BLOCKED — see the email mechanism note at "Oferta comercial - Envío documento". Tried the
     // full WorkOrder-finalize flow (technician + dispatched SA + Status='4' + justification);
@@ -1865,13 +1894,15 @@ describe('Funcional — UAT Base', () => {
 
   });
 
-  // BLOCKED (C592, C593): dispatch→Scheduled works cleanly (see C590), but pushing the SA further
-  // to a completed/finalized state hits a stricter validation chain than expected — moving
-  // Status to 'in_progress' worked, but the next transition failed with a generic
-  // "unexpected error... trying to process the service appointment status change", and on one
-  // attempt the parent WorkOrder ended up in an unrelated 'Rejected' state as a side effect.
-  // Needs the real intermediate-status sequence (likely involves a signature/report step) before
-  // reattempting.
+  // BLOCKED (C592, C593), re-confirmed 2026-07-15 with more precision: the real intermediate
+  // sequence IS 'in_progress' → '4' ('Pending signature') → '7' ('Complete') (found via
+  // describe — picklist labels), and 'in_progress'→'4' now works cleanly (WorkOrder.Status
+  // correctly reaches '3', Pending completion). But '4'→'7' still fails with the same generic
+  // "An unexpected error occurred while trying to process the service appointment status
+  // change." — almost certainly requires an actual signature/report artifact (e.g. a
+  // ContentVersion/Attachment linked to the SA) to be present first, which isn't just a field
+  // write. Not chased further given the effort already spent; worth a future session if there's
+  // a lead on what artifact the signature step expects.
   describe('Cita de servicio', () => {
     it.skip('[e2e] @C592 Verificar que el estado de la OT principal permanece inalterado al finalizar una cita si existen otras citas en estados distintos', async () => {
       // TODO: implementar — ver nota arriba sobre la máquina de estados de finalización de la cita.
@@ -1884,20 +1915,19 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Orden de trabajo - Grave', () => {
-    it.skip('[e2e] @C594 Verificar que se activa la consola de generación manual de segundas visitas al finalizar una OT con resultado \'Grave\' o \'Crítico\'', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C594 Verificar que se activa la consola de generación manual de segundas visitas al finalizar una OT con resultado \'Grave\' o \'Crítico\' — NO AUTOMATIZABLE VIA REST: "se activa la consola" es un elemento de UI (visibilidad de una Lightning Console/acción) sin correlato en backend verificable por REST — InspectionResult__c=4/5 (Serious/Critical) se puede setear y verificar, pero no hay forma de comprobar por REST que un botón/consola de UI aparece');
 
     it.skip('[e2e] @C595 Verificar que se generan automáticamente las segundas visitas dos días después de un resultado \'Grave\'', async () => {
-      // TODO: implementar
+      // TODO: implementar — depende de un proceso programado (batch/Flow con schedule) que
+      // reaccione 2 días después de un resultado 'Grave'; no identificado aún cuál CronTrigger de
+      // los ~62 encontrados en el org lo maneja. Candidato a investigar con Anonymous Apex,
+      // similar al grupo de email (ver memoria del proyecto).
     });
 
   });
 
   describe('Programación', () => {
-    it.skip('[e2e] @C598 Verificar que se pueden programar trabajos desde la consola custom de programación', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C598 Verificar que se pueden programar trabajos desde la consola custom de programación — NO AUTOMATIZABLE VIA REST: es una consola/UI custom (Lightning), la programación real (scheduleServiceAppointment) ya está cubierta directamente por REST en otros tests (ver C589/C590), pero verificar la consola en sí no tiene correlato en backend');
 
   });
 
