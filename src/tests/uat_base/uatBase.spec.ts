@@ -1718,9 +1718,56 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Recursos de servicio', () => {
-    it.skip('[e2e] @C629 Verificar que se pueden crear recursos de servicio con sus skills correspondientes', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C629 Verificar que se pueden crear recursos de servicio con sus skills correspondientes', async () => {
+      const report = new TestReport('C629 — Crear ServiceResource con ServiceResourceSkill');
+      try {
+        // RelatedRecordId (User) is required in practice despite being nillable in the schema —
+        // reused an existing active User with no ServiceResource yet, avoiding the cost/risk of
+        // creating a brand-new licensed User via API just for this test. ServiceResource-User is
+        // enforced 1:1 (DUPLICATE_VALUE otherwise) and the API user has no delete permission on
+        // ServiceResource (INSUFFICIENT_ACCESS_OR_READONLY), so each run permanently consumes one
+        // spare User — acceptable since 200+ are available (checked via SOQL), but pick a fresh
+        // one dynamically each run rather than hardcoding an Id.
+        const [spareUser] = await sfQuery.query<{ Id: string }>(
+          `SELECT Id FROM User WHERE IsActive = true AND Id NOT IN (SELECT RelatedRecordId FROM ServiceResource WHERE RelatedRecordId != null) LIMIT 1`
+        );
+        expect(spareUser).toBeTruthy();
+        const relatedUserId = spareUser.Id;
+        const srId = await pactum.spec()
+          .post('/sobjects/ServiceResource/')
+          .withBody({ Name: `E2E Test Resource ${Date.now()}`, ResourceType: 'T', IsActive: true, RelatedRecordId: relatedUserId })
+          .withRequestTimeout(30000)
+          .expectStatus(201)
+          .returns('id') as string;
+        report.step('Crear ServiceResource', { 'ServiceResource Id': srId, 'RelatedRecordId': relatedUserId }, 'ok');
+
+        const [skill] = await sfQuery.query<{ Id: string; MasterLabel: string }>('SELECT Id, MasterLabel FROM Skill LIMIT 1');
+        expect(skill).toBeTruthy();
+
+        const skillId = await pactum.spec()
+          .post('/sobjects/ServiceResourceSkill/')
+          .withBody({ ServiceResourceId: srId, SkillId: skill.Id, EffectiveStartDate: new Date().toISOString().slice(0, 10) })
+          .withRequestTimeout(30000)
+          .expectStatus(201)
+          .returns('id') as string;
+        report.step('Añadir Skill al ServiceResource', { 'ServiceResourceSkill Id': skillId, 'Skill': skill.MasterLabel }, 'ok');
+
+        const [srSkill] = await sfQuery.query<{ Id: string; ServiceResourceId: string; SkillId: string }>(
+          `SELECT Id, ServiceResourceId, SkillId FROM ServiceResourceSkill WHERE Id = '${skillId}'`
+        );
+        expect(srSkill.ServiceResourceId).toBe(srId);
+        expect(srSkill.SkillId).toBe(skill.Id);
+        report.step(
+          'Verificar recurso de servicio con skill asociada',
+          { 'ServiceResource Id': srId, 'Skill Id': skill.Id },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 60000);
 
   });
 
