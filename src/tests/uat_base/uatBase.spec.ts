@@ -747,9 +747,7 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Oferta Comercial - Pedido de compra', () => {
-    it.skip('[e2e] @C541 Verificar que se generan correctamente los pedidos de compra al añadir productos de distintos catálogos de compra en la oferta comercial', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C541 Verificar que se generan correctamente los pedidos de compra al añadir productos de distintos catálogos de compra en la oferta comercial — NO AUTOMATIZABLE VIA REST: la generación de pedidos de compra desde catálogos de proveedor en la oferta comercial pasa por el selector Aura/LWC (NBK_ProductSelectorController.getProductSelectorSupplierProdsWr), el mismo remote-action ya confirmado inalcanzable por REST para el motor de impuestos y para C570/C573');
 
   });
 
