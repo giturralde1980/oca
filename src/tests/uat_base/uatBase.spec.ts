@@ -1278,8 +1278,18 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Orden de trabajo', () => {
+    // BLOCKED en QA (no arquitectónico — ver nota de entorno, puede cambiar en cualquier
+    // redeploy): el mecanismo real SÍ se identificó vía Tooling API —
+    // NBK_WorkOrderTriggerHelper.processNonZobrAutoWaybillForFinishedWorkOrders pone
+    // OrderItem.Waybilled__c=true automáticamente al pasar WorkOrder.Status='4' (Complete) en
+    // pedidos NO-ZOBR (RG no está en SKIP_AUTOWAYBILL_BUSINESS_LINES), pero exige
+    // OrderItem.OrderSAPId__c no vacío — es decir, que el Pedido de venta ya esté sincronizado con
+    // SAP. Un Pedido RG/ZSER recién ganado con setupRGQuote/winRGQuoteAndGetOrder falla esa
+    // sincronización: "error - ZSF_SALES/006: El centro de beneficio CK1700 no existe en SAP" —
+    // un problema de datos maestros de SAP en este entorno QA, no de la automatización en sí.
     it.skip('[e2e] @C580 Verificar que al finalizar una OT se albarana automáticamente la línea de pedido', async () => {
-      // TODO: implementar
+      // TODO: retomar si se soluciona el centro de beneficio CK1700 en SAP QA, o si aparece otra
+      // combinación de Delegation/Society/Activity cuyo Pedido sí sincronice correctamente.
     });
 
     it.skip('[e2e] @C583 Verificar que al finalizar una OT se puede albaranar manualmente la línea de pedido', async () => {
