@@ -1138,21 +1138,13 @@ describe('Funcional — UAT Base', () => {
       }
     }, 120000);
 
-    it.skip('[e2e] @C570 Verificar que solo se muestran las líneas de pedido de venta aún no albaranadas al generar líneas de pedido de compra', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C570 Verificar que solo se muestran las líneas de pedido de venta aún no albaranadas al generar líneas de pedido de compra — NO AUTOMATIZABLE VIA REST: el filtrado de líneas elegibles ocurre dentro del selector Aura/LWC (NBK_ProductSelectorController.getProductSelectorSupplierProdsWr), el mismo remote-action ya confirmado inalcanzable por REST para el motor de impuestos — la creación directa de la línea (ver C567-569) no pasa por ese filtro');
 
-    it.skip('[e2e] @C571 Verificar que las líneas de pedido de compra se integran correctamente en SAP', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C571 Verificar que las líneas de pedido de compra se integran correctamente en SAP — NO CONFIRMADO POR REST: un Pedido de Compra creado hoy (801JW00001OXtLxYAL) sigue con SAPPOId__c=null y sin error tras 40+ minutos; a diferencia de Pedido de venta (que sí sincroniza de forma observable), no se encontró evidencia de que esta sincronización se dispare automáticamente ni de cómo forzarla por REST');
 
-    it.skip('[e2e] @C572 Verificar que al modificar el precio de una línea de pedido de compra se actualiza correctamente en SAP', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C572 Verificar que al modificar el precio de una línea de pedido de compra se actualiza correctamente en SAP — NO AUTOMATIZABLE: depende del mismo mecanismo de sincronización SAP no confirmado que C571');
 
-    it.skip('[e2e] @C573 Verificar que se puede configurar un pedido de compra filtrando productos desde el selector de pedido de venta', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C573 Verificar que se puede configurar un pedido de compra filtrando productos desde el selector de pedido de venta — NO AUTOMATIZABLE VIA REST: mismo motivo que C570 (selector Aura/LWC vía NBK_ProductSelectorController)');
 
   });
 
