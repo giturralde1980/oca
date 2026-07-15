@@ -1955,9 +1955,44 @@ describe('Funcional — UAT Base', () => {
       }
     }, 180000);
 
-    it.skip('[e2e] @C606 Verificar que se impide modificar el porcentaje de producción de una OT ya albaranada', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C606 Verificar que se impide modificar el porcentaje de producción de una OT ya albaranada', async () => {
+      const report = new TestReport('C606 — Se impide modificar WaybillPercentage__c en una OT ya albaranada');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        const [, { orderId }] = await Promise.all([
+          changeIndustriaQuoteStatusToWon(quoteId, report),
+          waitAndPatchIndustriaOrderActivity(quoteId, report),
+        ]);
+        await verifyOrderSyncedByOrderId(orderId, { initialDelayMs: 15000 });
+
+        const workOrderId = await queryWorkOrderByOrderId(orderId);
+        expect(workOrderId).toBeTruthy();
+
+        await updateRecord('WorkOrder', workOrderId!, { Waybilled__c: true });
+        report.step('Albaranar la OT (paso previo)', { 'WorkOrder Id': workOrderId! }, 'ok');
+
+        let blocked = false;
+        let errorMessage = '';
+        try {
+          await updateRecord('WorkOrder', workOrderId!, { WaybillPercentage__c: 50 });
+        } catch (e) {
+          blocked = true;
+          errorMessage = (e as Error).message;
+        }
+        expect(blocked).toBe(true);
+        report.step(
+          'Verificar que se impide modificar el porcentaje de producción',
+          { 'WorkOrder Id': workOrderId!, 'Bloqueado': String(blocked), 'Error': errorMessage },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 180000);
 
     it('[e2e] @C607 Verificar que se puede desalbaranar una OT correctamente', async () => {
       const report = new TestReport('C607 — Desalbaranar una OT ya albaranada (Waybilled__c=false)');
