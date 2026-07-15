@@ -1609,8 +1609,16 @@ describe('Funcional — UAT Base', () => {
       }
     }, 180000);
 
+    // IN PROGRESS — probado empíricamente sobre una línea ya albaranada (Waybilled__c=true):
+    // modificar UnitPrice+Subtotal__c juntos (para no chocar con la Validation Rule de
+    // consistencia de precio ya conocida) SÍ se acepta — no existe una restricción "no se puede
+    // modificar el importe si ya está albaranada" en este escenario RG/ZSER — pero no se observó
+    // ningún efecto posterior por REST: ni se creó una OT nueva, ni OrderItem.Waybilled__c se
+    // reseteó a false. El "nuevo albaranado" que describe el test probablemente es un concepto
+    // del lado SAP (un nuevo documento de entrega remoto), no algo visible en Salesforce vía REST
+    // con los campos ya explorados.
     it.skip('[e2e] @C582 Verificar que al modificar el importe de una línea de pedido se lanza un nuevo albaranado', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota del describe; no se encontró efecto observable por REST aún.
     });
 
   });
