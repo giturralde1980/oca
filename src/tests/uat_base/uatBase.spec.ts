@@ -469,9 +469,7 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Contrato Marco - Doc.', () => {
-    it.skip('[e2e] @C529 Verificar que se puede generar el documento del contrato marco', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C529 Verificar que se puede generar el documento del contrato marco — NO AUTOMATIZABLE VIA REST: la generación de documento usa Conga Composer (integración externa vía NBK_DocumentGenerationController/QuoteURLConga__c), no un proceso interno invocable por REST; además NBK_DocumentGenerationController está IsValid=false en QA desde 2026-04-14');
 
   });
 
@@ -736,13 +734,9 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Oferta comercial - Doc.', () => {
-    it.skip('[e2e] @C539 Verificar que se puede generar el documento de la oferta comercial (Construcción)', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C539 Verificar que se puede generar el documento de la oferta comercial (Construcción) — NO AUTOMATIZABLE VIA REST: mismo motivo que C529 (Conga Composer + NBK_DocumentGenerationController roto en QA)');
 
-    it.skip('[e2e] @C540 Verificar que se puede generar el documento de la oferta comercial', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C540 Verificar que se puede generar el documento de la oferta comercial — NO AUTOMATIZABLE VIA REST: mismo motivo que C529 (Conga Composer + NBK_DocumentGenerationController roto en QA)');
 
   });
 
