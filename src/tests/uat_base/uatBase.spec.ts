@@ -1998,94 +1998,73 @@ describe('Funcional — UAT Base', () => {
 
   });
 
+  // BLOCKED en QA por un deploy roto (no arquitectónico — puede resolverse en cualquier
+  // redeploy, ver nota de entorno en memoria/histórico de la suite): TODA la maquinaria de
+  // facturación automática está IsValid=false en QA ahora mismo (confirmado vía Tooling API) —
+  // NBK_AutomaticBillingBatch, NBK_BillingManagerController, DTT_AutoBillingOIBatch,
+  // DTT_AutoBillingWOBatch, DTT_batch_automaticBillingZobra. Ej.: NBK_AutomaticBillingBatch
+  // referencia OrderItem.ExcludeBillingBlockedClient__c, que ya no existe (el campo real hoy es
+  // DTT_Excluded__c). La mayoría fue tocada por 'Release Admin' el 2026-07-14 06:19:17 UTC — el
+  // MISMO timestamp que NBK_ProductionHistoryEntryTrigger (C611/C612) y
+  // NBK_OrderItemTriggerHelper (C564/C565), confirmando que un solo deploy rompió varias áreas a
+  // la vez. No es una limitación de automatización por REST — es que la funcionalidad en sí no
+  // corre en QA hoy. Reportado al equipo de desarrollo.
   describe('Facturación - ZSER', () => {
-    it.skip('[e2e] @C613 Verificar que se puede generar una factura desde la pantalla de facturación manual del pedido de venta', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C613 Verificar que se puede generar una factura desde la pantalla de facturación manual del pedido de venta — NO EJECUTABLE EN QA: ver nota del describe (maquinaria de facturación automática rota, IsValid=false)');
 
-    it.skip('[e2e] @C614 Verificar que la factura generada se sincroniza correctamente con SAP', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C614 Verificar que la factura generada se sincroniza correctamente con SAP — NO EJECUTABLE EN QA: ver nota del describe');
 
   });
 
   describe('Facturación - ZOBR', () => {
-    it.skip('[e2e] @C615 Verificar que se muestra un único plan de facturación al 100% en pedidos tipo ZOBR', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C615 Verificar que se muestra un único plan de facturación al 100% en pedidos tipo ZOBR — NO EJECUTABLE EN QA: ver nota del describe anterior (maquinaria de facturación rota)');
 
-    it.skip('[e2e] @C616 Verificar que se impide crear planes de facturación que no sumen un 100%', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C616 Verificar que se impide crear planes de facturación que no sumen un 100% — NO EJECUTABLE EN QA: ver nota anterior');
 
-    it.skip('[e2e] @C617 Verificar que se puede facturar seleccionando solo algunos planes de facturación, calculando el importe correctamente', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C617 Verificar que se puede facturar seleccionando solo algunos planes de facturación, calculando el importe correctamente — NO EJECUTABLE EN QA: ver nota anterior');
 
   });
 
   describe('Facturación - Proforma', () => {
-    it.skip('[e2e] @C618 Verificar que se puede generar una proforma sincronizada con SAP', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C618 Verificar que se puede generar una proforma sincronizada con SAP — NO EJECUTABLE EN QA: ver nota de Facturación - ZSER (maquinaria de facturación rota)');
 
   });
 
   describe('Facturación - Emitida', () => {
-    it.skip('[e2e] @C619 Verificar que se puede generar directamente una factura emitida sincronizada con SAP', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C619 Verificar que se puede generar directamente una factura emitida sincronizada con SAP — NO EJECUTABLE EN QA: ver nota de Facturación - ZSER');
 
   });
 
   describe('Facturación', () => {
-    it.skip('[e2e] @C620 Verificar que se puede generar una factura emitida a partir de una proforma', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C620 Verificar que se puede generar una factura emitida a partir de una proforma — NO EJECUTABLE EN QA: ver nota de Facturación - ZSER');
 
-    it.skip('[e2e] @C627 Verificar que se genera la notificación de facturación electrónica al facturar una cuenta con ese check marcado', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C627 Verificar que se genera la notificación de facturación electrónica al facturar una cuenta con ese check marcado — NO EJECUTABLE EN QA: ver nota de Facturación - ZSER');
 
   });
 
   describe('Facturación - Abono', () => {
-    it.skip('[e2e] @C621 Verificar que se puede abonar una factura emitida con facturación por hitos y se liberan los planes de facturación', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C621 Verificar que se puede abonar una factura emitida con facturación por hitos y se liberan los planes de facturación — NO EJECUTABLE EN QA: ver nota de Facturación - ZSER');
 
   });
 
   describe('Facturación -  ZOBR', () => {
-    it.skip('[e2e] @C622 Verificar que se pueden facturar planes que estaban en una factura ya abonada', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C622 Verificar que se pueden facturar planes que estaban en una factura ya abonada — NO EJECUTABLE EN QA: ver nota de Facturación - ZSER');
 
-    it.skip('[e2e] @C623 Verificar que se pueden reutilizar planes de facturación de una proforma que fue borrada', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C623 Verificar que se pueden reutilizar planes de facturación de una proforma que fue borrada — NO EJECUTABLE EN QA: ver nota de Facturación - ZSER');
 
-    it.skip('[e2e] @C624 Verificar que una factura sin cobro cambia a estado \'Impagada\' y se envía el transaccional correspondiente', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C624 Verificar que una factura sin cobro cambia a estado \'Impagada\' y se envía el transaccional correspondiente — NO EJECUTABLE EN QA: ver nota de Facturación - ZSER (además depende del grupo de email, ya bloqueado por otro motivo)');
 
   });
 
   describe('Facturación - Cobro', () => {
-    it.skip('[e2e] @C625 Verificar que el estado de una factura cambia a \'Cobrado\' al contabilizar el cobro en SAP', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C625 Verificar que el estado de una factura cambia a \'Cobrado\' al contabilizar el cobro en SAP — NO EJECUTABLE EN QA: ver nota de Facturación - ZSER');
 
-    it.skip('[e2e] @C626 Verificar que el estado de una factura cambia a \'Impagada\' al modificar su fecha de vencimiento', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C626 Verificar que el estado de una factura cambia a \'Impagada\' al modificar su fecha de vencimiento — NO EJECUTABLE EN QA: ver nota de Facturación - ZSER');
 
   });
 
   describe('Pedidos - Refacturación', () => {
-    it.skip('[e2e] @C628 Verificar que se puede realizar el proceso de refacturación entre sociedades', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C628 Verificar que se puede realizar el proceso de refacturación entre sociedades — NO EJECUTABLE EN QA: depende de la misma maquinaria de facturación rota (ver nota de Facturación - ZSER)');
 
   });
 
