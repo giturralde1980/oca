@@ -1327,9 +1327,75 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Pedido de venta - Clonar', () => {
-    it.skip('[e2e] @C574 Verificar que se puede clonar un pedido de venta con sus líneas y su sincronización con SAP', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C574 Verificar que se puede clonar un pedido de venta con sus líneas y su sincronización con SAP', async () => {
+      const report = new TestReport('C574 — Clonar Pedido de venta (vía Oferta) y verificar su sincronización con SAP');
+      try {
+        // "Clonar un pedido de venta" se resuelve clonando la Oferta que lo origina y ganándola:
+        // el Order en sí no es un objeto que se cree/clone manualmente en este modelo (se
+        // sincroniza automáticamente al ganar una Quote) — clonar la Quote y ganarla produce un
+        // segundo Pedido real, con sus propias líneas y su propia sincronización con SAP.
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        const [, { orderId: originalOrderId }] = await Promise.all([
+          changeIndustriaQuoteStatusToWon(quoteId, report),
+          waitAndPatchIndustriaOrderActivity(quoteId, report),
+        ]);
+        await verifyOrderSyncedByOrderId(originalOrderId, { initialDelayMs: 15000 });
+        report.step('Pedido original sincronizado con SAP', { 'Quote Id': quoteId, 'Order Id': originalOrderId }, 'ok');
+
+        const QUOTE_FIELDS = 'Name, OpportunityId, RecordTypeId, Society__c, Pricebook2Id, ContactId, Delegation__c, OrderType__c, BillingProfile__c, PaymentResponsibleContact__c, Holder__c, Payer__c, Prescriber__c, BusinessLine__c, Section__c, Activity__c, Actividad_LN__c, AssignedCommercial__c, Origin__c, EntryChannel__c';
+        const [source] = await sfQuery.query<Record<string, unknown>>(`SELECT ${QUOTE_FIELDS} FROM Quote WHERE Id = '${quoteId}'`);
+        const LINE_FIELDS = 'PricebookEntryId, Quantity, UnitPrice, SelectedPrice__c, Activity__c, Subactivity__c, Holder__c, Asset__c, Actividad_LN__c, Discount__c, Subtotal__c, Taxes__c, TaxesTotal__c, Fee__c, Description';
+        const [sourceLine] = await sfQuery.query<Record<string, unknown>>(`SELECT ${LINE_FIELDS} FROM QuoteLineItem WHERE QuoteId = '${quoteId}'`);
+
+        const cloneQuoteId = await createQuote({
+          Name:                         `${source.Name} (clon pedido)`,
+          OpportunityId:                source.OpportunityId,
+          RecordTypeId:                 source.RecordTypeId,
+          Society__c:                   source.Society__c,
+          Pricebook2Id:                 source.Pricebook2Id,
+          ContactId:                    source.ContactId,
+          Delegation__c:                source.Delegation__c,
+          OrderType__c:                 source.OrderType__c,
+          BillingProfile__c:            source.BillingProfile__c,
+          PaymentResponsibleContact__c: source.PaymentResponsibleContact__c,
+          Holder__c:                    source.Holder__c,
+          Payer__c:                     source.Payer__c,
+          Prescriber__c:                source.Prescriber__c,
+          BusinessLine__c:              source.BusinessLine__c,
+          Section__c:                   source.Section__c,
+          Activity__c:                  source.Activity__c,
+          Actividad_LN__c:              source.Actividad_LN__c,
+          AssignedCommercial__c:        source.AssignedCommercial__c,
+          Origin__c:                    source.Origin__c,
+          EntryChannel__c:              source.EntryChannel__c,
+          Status:                       'Nueva',
+        });
+        await createQuoteLineItem({ QuoteId: cloneQuoteId, ...sourceLine, Bypass_Apex__c: true });
+        report.step('Clonar la Oferta de origen', { 'Quote Id original': quoteId, 'Quote Id clon': cloneQuoteId }, 'ok');
+
+        await changeQuoteStatus(cloneQuoteId, 'Generada', report);
+        const [, { orderId: cloneOrderId }] = await Promise.all([
+          changeIndustriaQuoteStatusToWon(cloneQuoteId, report),
+          waitAndPatchIndustriaOrderActivity(cloneQuoteId, report),
+        ]);
+        await verifyOrderSyncedByOrderId(cloneOrderId, { initialDelayMs: 15000 });
+
+        expect(cloneOrderId).not.toBe(originalOrderId);
+        const [cloneItem] = await sfQuery.query<{ Id: string }>(`SELECT Id FROM OrderItem WHERE OrderId = '${cloneOrderId}'`);
+        expect(cloneItem).toBeTruthy();
+        report.step(
+          'Verificar Pedido clonado con sus líneas y sincronizado con SAP',
+          { 'Order Id original': originalOrderId, 'Order Id clon': cloneOrderId, 'Línea clon': cloneItem.Id },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 240000);
 
   });
 
