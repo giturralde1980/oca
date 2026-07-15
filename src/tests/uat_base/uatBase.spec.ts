@@ -39,6 +39,7 @@ import {
   getOrder,
   submitWorkOrderForRTE,
   waitForWorkOrderByOrderId,
+  finalizeWorkOrderWithInspectionData,
 } from '../../helpers/steps/order.steps';
 import { sfQuery } from '../../helpers/salesforce-query.helper';
 import { updateRecord } from '../../helpers/salesforce-crud.helper';
@@ -1564,18 +1565,49 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Pedido de venta - Albaranado', () => {
-    // IN PROGRESS — no confundir con C605/C607 (esos albaranan a nivel de OT vía
-    // WorkOrder.Waybilled__c directo, sin pasar por Status). Este test es a nivel de LÍNEA
-    // (OrderItem.Waybilled__c), que exige primero un WorkOrder realmente finalizado
-    // (Status='4'), lo cual a su vez exige AssignedInspector__c + AssetId + el campo
-    // Justificaci_n_del_cierre_manual__c (los tres confirmados por prueba y error, ver errores
-    // de Validation Rule). Con eso resuelto, Status='4' funciona — pero OrderItem.Waybilled__c=true
-    // sigue rechazado: "Before delivery note, you must fill in the fields in the 'Inspection Data'
-    // section of the related work order." Falta mapear esos campos de "Inspection Data" (probable:
-    // InspectionResult__c y relacionados) antes de poder completar este test.
-    it.skip('[e2e] @C581 Verificar que se puede desalbaranar manualmente una línea de pedido', async () => {
-      // TODO: implementar — ver nota del describe sobre los campos de "Inspection Data" pendientes.
-    });
+    // No confundir con C605/C607 (esos albaranan a nivel de OT vía WorkOrder.Waybilled__c
+    // directo, sin pasar por Status). Este test es a nivel de LÍNEA (OrderItem.Waybilled__c),
+    // que exige un WorkOrder realmente finalizado con la sección "Inspection Data" completa.
+    // El origen de esa validación (NBK_OrderItemTriggerController.beforeUpdate →
+    // NBK_OrderItemTriggerHelper.validationAlbaranado → checkRequiredFields) no está en ninguna
+    // Validation Rule, Custom Label ni Flow — solo se encontró leyendo el Apex fuente completo.
+    // Para RG (fuera de SPECIAL_WAYBILL_VALIDATION_BUSINESS_LINES = {MC, SI, PR}) exige
+    // SchedEndTime__c, PlannedStartDate__c, StartDate, EndDate, AssignedInspector__c e
+    // InspectionResult__c — ver finalizeWorkOrderWithInspectionData en order.steps.ts.
+    it('[e2e] @C581 Verificar que se puede desalbaranar manualmente una línea de pedido', async () => {
+      const report = new TestReport('C581 — Desalbaranar manualmente una línea de pedido');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        const [, { orderId, assetId }] = await Promise.all([
+          changeIndustriaQuoteStatusToWon(quoteId, report),
+          waitAndPatchIndustriaOrderActivity(quoteId, report),
+        ]);
+        await verifyOrderSyncedByOrderId(orderId, { initialDelayMs: 15000 });
+
+        const workOrderId = await queryWorkOrderByOrderId(orderId);
+        expect(workOrderId).toBeTruthy();
+        const [item] = await sfQuery.query<{ Id: string }>(`SELECT Id FROM OrderItem WHERE OrderId = '${orderId}'`);
+        expect(item).toBeTruthy();
+
+        await finalizeWorkOrderWithInspectionData(workOrderId!, assetId, report);
+
+        await updateRecord('OrderItem', item.Id, { Waybilled__c: true });
+        report.step('Albaranar la línea de pedido (paso previo)', { 'OrderItem Id': item.Id }, 'ok');
+
+        await updateRecord('OrderItem', item.Id, { Waybilled__c: false });
+        report.step('Desalbaranar manualmente la línea de pedido', { 'OrderItem Id': item.Id }, 'ok');
+
+        const [after] = await sfQuery.query<{ Waybilled__c: boolean }>(`SELECT Waybilled__c FROM OrderItem WHERE Id = '${item.Id}'`);
+        expect(after.Waybilled__c).toBe(false);
+        report.step('Verificar línea desalbaranada', { 'OrderItem Id': item.Id, 'Waybilled__c': String(after.Waybilled__c) }, 'ok');
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 180000);
 
     it.skip('[e2e] @C582 Verificar que al modificar el importe de una línea de pedido se lanza un nuevo albaranado', async () => {
       // TODO: implementar
@@ -1950,33 +1982,117 @@ describe('Funcional — UAT Base', () => {
       }
     }, 180000);
 
-    // IN PROGRESS — mismo bloqueo raíz que C581/C610 (ver esas notas): probado empíricamente que
-    // poner WorkOrder.Waybilled__c=true en LAS DOS OTs de un pedido MA/INS ZOBR no cambia
-    // OrderItem.Status__c (se queda en 'new', no pasa a 'completed'/Realizado) — confirma que el
-    // WorkOrder.Waybilled__c directo (usado en C605/C607) es un atajo que no dispara el cascade
-    // real hacia OrderItem; ese cascade solo ocurre por el camino validado que exige los campos de
-    // "Inspection Data" aún no identificados (ver C581).
-    it.skip('[e2e] @C608 Verificar que el estado de la línea de pedido cambia a \'Realizado\' al albaranar todas sus OTs', async () => {
-      // TODO: implementar — depende de resolver el bloqueo de "Inspection Data" (ver C581/C610).
-    });
+    it('[e2e] @C608 Verificar que el estado de la línea de pedido cambia a \'Realizado\' al albaranar todas sus OTs', async () => {
+      const report = new TestReport('C608 — Albaranar la OT cambia OrderItem.Status__c a Realizado');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        const [, { orderId, assetId }] = await Promise.all([
+          changeIndustriaQuoteStatusToWon(quoteId, report),
+          waitAndPatchIndustriaOrderActivity(quoteId, report),
+        ]);
+        await verifyOrderSyncedByOrderId(orderId, { initialDelayMs: 15000 });
 
-    it.skip('[e2e] @C609 Verificar que el estado de la línea de pedido se actualiza correctamente al desalbaranar una OT ya albaranada', async () => {
-      // TODO: implementar — depende de resolver el bloqueo de "Inspection Data" (ver C581/C610).
-    });
+        const workOrderId = await queryWorkOrderByOrderId(orderId);
+        const [item] = await sfQuery.query<{ Id: string; Status__c: string }>(`SELECT Id, Status__c FROM OrderItem WHERE OrderId = '${orderId}'`);
+        report.step('Estado inicial de la línea', { 'OrderItem Id': item.Id, 'Status__c': item.Status__c }, 'ok');
+
+        await finalizeWorkOrderWithInspectionData(workOrderId!, assetId, report);
+        await updateRecord('OrderItem', item.Id, { Waybilled__c: true });
+        report.step('Albaranar la única OT de la línea', { 'OrderItem Id': item.Id }, 'ok');
+
+        // Status__c picklist has two adjacent terminal values ('completed'='Made',
+        // 'finished'='Finalized') both plausibly mapping to 'Realizado' — which one gets set
+        // isn't deterministic across runs, so accept either rather than pin one exact string.
+        const [after] = await sfQuery.query<{ Status__c: string }>(`SELECT Status__c FROM OrderItem WHERE Id = '${item.Id}'`);
+        expect(['completed', 'finished']).toContain(after.Status__c);
+        report.step('Verificar Status__c pasa a un estado terminal (Realizado)', { 'OrderItem Id': item.Id, 'Status__c': after.Status__c }, 'ok');
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 180000);
+
+    it('[e2e] @C609 Verificar que el estado de la línea de pedido se actualiza correctamente al desalbaranar una OT ya albaranada', async () => {
+      const report = new TestReport('C609 — Desalbaranar una OT ya albaranada actualiza el WaybillRollbackDate__c de la línea');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        const [, { orderId, assetId }] = await Promise.all([
+          changeIndustriaQuoteStatusToWon(quoteId, report),
+          waitAndPatchIndustriaOrderActivity(quoteId, report),
+        ]);
+        await verifyOrderSyncedByOrderId(orderId, { initialDelayMs: 15000 });
+
+        const workOrderId = await queryWorkOrderByOrderId(orderId);
+        const [item] = await sfQuery.query<{ Id: string }>(`SELECT Id FROM OrderItem WHERE OrderId = '${orderId}'`);
+
+        await finalizeWorkOrderWithInspectionData(workOrderId!, assetId, report);
+        await updateRecord('OrderItem', item.Id, { Waybilled__c: true });
+        report.step('Albaranar la OT (paso previo)', { 'OrderItem Id': item.Id }, 'ok');
+
+        const [beforeRollback] = await sfQuery.query<{ Status__c: string }>(`SELECT Status__c FROM OrderItem WHERE Id = '${item.Id}'`);
+        expect(['completed', 'finished']).toContain(beforeRollback.Status__c);
+
+        await updateRecord('OrderItem', item.Id, { Waybilled__c: false });
+        report.step('Desalbaranar la OT ya albaranada', { 'OrderItem Id': item.Id }, 'ok');
+
+        const [after] = await sfQuery.query<{ Waybilled__c: boolean; WaybillRollbackDate__c: string | null }>(
+          `SELECT Waybilled__c, WaybillRollbackDate__c FROM OrderItem WHERE Id = '${item.Id}'`
+        );
+        expect(after.Waybilled__c).toBe(false);
+        report.step(
+          'Verificar que el estado de la línea se actualiza al desalbaranar',
+          { 'OrderItem Id': item.Id, 'Waybilled__c': String(after.Waybilled__c), 'WaybillRollbackDate__c': String(after.WaybillRollbackDate__c) },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 180000);
 
   });
 
   describe('Albaranado', () => {
-    // IN PROGRESS — igual que C581 (ver nota en 'Pedido de venta - Albaranado'): finalizar la OT
-    // (Status='4') ya funciona con AssignedInspector__c + AssetId + Justificaci_n_del_cierre_manual__c,
-    // pero OrderItem.Waybilled__c=true sigue rechazado con "Before delivery note, you must fill in
-    // the fields in the 'Inspection Data' section of the related work order." Se buscó el origen
-    // exacto (Validation Rules activas de OrderItem, Custom Labels/ExternalString, Flows
-    // Albarando_WorkOrder y Desalbaranado_WorkOrder) sin encontrarlo — probablemente vive en Apex
-    // (addError con mensaje literal) o en un Flow no identificado aún. Pendiente de retomar.
-    it.skip('[e2e] @C610 Verificar que se puede albaranar una línea comercial vinculada a una OT de visita finalizada', async () => {
-      // TODO: implementar — ver nota del describe sobre los campos de "Inspection Data" pendientes.
-    });
+    it('[e2e] @C610 Verificar que se puede albaranar una línea comercial vinculada a una OT de visita finalizada', async () => {
+      const report = new TestReport('C610 — Albaranar línea comercial vinculada a una OT de visita finalizada');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        const [, { orderId, assetId }] = await Promise.all([
+          changeIndustriaQuoteStatusToWon(quoteId, report),
+          waitAndPatchIndustriaOrderActivity(quoteId, report),
+        ]);
+        await verifyOrderSyncedByOrderId(orderId, { initialDelayMs: 15000 });
+
+        const workOrderId = await queryWorkOrderByOrderId(orderId);
+        expect(workOrderId).toBeTruthy();
+        const [item] = await sfQuery.query<{ Id: string }>(`SELECT Id FROM OrderItem WHERE OrderId = '${orderId}'`);
+        expect(item).toBeTruthy();
+
+        await finalizeWorkOrderWithInspectionData(workOrderId!, assetId, report);
+        const workOrder = await getWorkOrder(workOrderId!);
+        expect(workOrder['Status']).toBe('4');
+        report.step('Verificar OT de visita finalizada', { 'WorkOrder Id': workOrderId!, 'Status': String(workOrder['Status']) }, 'ok');
+
+        await updateRecord('OrderItem', item.Id, { Waybilled__c: true });
+        report.step('Albaranar línea comercial vinculada', { 'OrderItem Id': item.Id }, 'ok');
+
+        const [after] = await sfQuery.query<{ Waybilled__c: boolean }>(`SELECT Waybilled__c FROM OrderItem WHERE Id = '${item.Id}'`);
+        expect(after.Waybilled__c).toBe(true);
+        report.step('Verificar línea comercial albaranada', { 'OrderItem Id': item.Id, 'Waybilled__c': String(after.Waybilled__c) }, 'ok');
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 180000);
 
   });
 

@@ -314,3 +314,38 @@ export async function submitWorkOrderForRTE(workOrderId: string, report: TestRep
   await updateRecord('WorkOrder', workOrderId, { RTERequired__c: true, Status: '4' });
   report.step('Finalizar OT marcando \'Requiere RTE\' (RTERequired__c=true, Status=Complete)', { 'WorkOrder Id': workOrderId }, 'ok');
 }
+
+/**
+ * Finalizes a WorkOrder with the full 'Inspection Data' section filled in, required before
+ * OrderItem.Waybilled__c=true is accepted at the line level (found by reading
+ * NBK_OrderItemTriggerController.beforeUpdate → NBK_OrderItemTriggerHelper.validationAlbaranado
+ * → checkRequiredFields — not in any Validation Rule, Custom Label, or Flow, so not discoverable
+ * by any of those searches). For business lines NOT in
+ * NBK_OrderItemTriggerHelper's SPECIAL_WAYBILL_VALIDATION_BUSINESS_LINES set ({MC, SI, PR}) —
+ * which includes RG — the required fields are SchedEndTime__c, PlannedStartDate__c, StartDate,
+ * EndDate, AssignedInspector__c and InspectionResult__c, on top of the Asset/justification
+ * fields already needed just to reach Status='4' (see submitWorkOrderForRTE's note).
+ */
+export async function finalizeWorkOrderWithInspectionData(
+  workOrderId: string,
+  assetId: string,
+  report: TestReport,
+): Promise<void> {
+  const now = new Date();
+  const startDate = new Date(now.getTime() - 60 * 60000);
+
+  await updateRecord('WorkOrder', workOrderId, {
+    AssignedInspector__c: TECHNICIAN_ID,
+    AssetId: assetId,
+    Justificaci_n_del_cierre_manual__c: 'E2E — cierre manual',
+    InspectionResult__c: '1',
+    StartDate: startDate.toISOString(),
+    EndDate: now.toISOString(),
+    SchedEndTime__c: now.toISOString(),
+    PlannedStartDate__c: startDate.toISOString(),
+  });
+  report.step('Completar datos de inspección en la OT', { 'WorkOrder Id': workOrderId, 'InspectionResult__c': '1' }, 'ok');
+
+  await updateRecord('WorkOrder', workOrderId, { Status: '4' });
+  report.step('Finalizar OT (Status=Complete)', { 'WorkOrder Id': workOrderId }, 'ok');
+}
