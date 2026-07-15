@@ -5,6 +5,7 @@ export const ACCOUNT_RECORD_TYPES = {
   BUSINESS:    '01209000000ivaNAAQ', // RT DeveloperName = 'Client' (Cliente)
   EXPLOTACION: '01209000000ivaMAAQ', // RT DeveloperName = 'Area' (Explotación)
   DELEGACION:  '01209000000ivaOAAQ', // RT DeveloperName = 'Delegation' (Delegación)
+  PROVEEDOR:   '01209000000ivaPAAQ', // RT DeveloperName = 'Supplier' (Proveedor)
 };
 
 export const DELEGATIONS = {

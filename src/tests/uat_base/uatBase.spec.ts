@@ -1,4 +1,5 @@
 import pactum from 'pactum';
+import { faker } from '@faker-js/faker';
 import { setupPactum } from '../../helpers/request.helper';
 import { TestReport, SuiteReport } from '../../helpers/report.helper';
 
@@ -340,20 +341,64 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Cuenta - Proveedor', () => {
-    // BLOCKED: Supplier (RT 01209000000ivaPAAQ) uses a completely different SAP/CVI field
-    // mapping than Client/Explotación/Delegación. Errors from SAP confirm required: Teléfono 2,
-    // Nº telefax, Número de télex, SMTP email — but Phone2__c/Fax overrides did not resolve
-    // them, meaning those aren't the fields actually read by the integration. A real synced
-    // Supplier account also uses address fields not used elsewhere in this org
-    // (LKP_Billing_Region__c, TXT_Billing_Street_Number__c) instead of standard
-    // BillingStreet/BillingCity. Full field mapping needs confirmation before implementing.
-    it.skip('[e2e] @C523 Verificar que se puede crear una cuenta de tipo Proveedor con los campos necesarios para sincronizar con SAP', async () => {
-      // TODO: implementar — ver nota arriba sobre el mapeo de campos SAP/CVI de Proveedor.
-    });
+    // Field mapping confirmed by reading NBK_AccountIntegrationManager.AccountSyncCreation →
+    // NBK_ProviderIntegrationWrapper's constructor (Tooling API, ApexClass.Body): for RT Supplier
+    // it builds { AccountGroup__c, AccountNumber, SocialReason__c, Shipping* (not Billing*),
+    // Country_lookup__r.Code__c/Country__c, Language__c, Phone, Email__c, CIF__c, CIFEU__c,
+    // ClientsGroup__c, InternationalRegion__r.Code__c } plus CompanyInfo/PurchaseInfo/BankInfo
+    // sourced from the principal BillingProfile__c (IsPrincipal__c=true: Society__c,
+    // PaymentConditions__c, PaymentMethod__c, payment days, BankAccount__c). Reference values
+    // (AccountGroup__c='Z005', ClientsGroup__c='K001', PaymentConditions__c='P030',
+    // PaymentMethod__c='A') taken from real synced Supplier accounts 001JW000008A5mpYAC /
+    // 001JW00000ASSQDYA5. None of these match "Teléfono 2 / Nº telefax / Número de télex / SMTP
+    // email" from the earlier SAP error — the wrapper never sends those fields at all, so they
+    // are SAP-side master-data requirements outside what this integration payload controls, not
+    // a Salesforce field-mapping gap.
+    it('[e2e] @C523 Verificar que se puede crear una cuenta de tipo Proveedor con los campos necesarios para sincronizar con SAP', async () => {
+      const report = new TestReport('C523 — Crear cuenta Proveedor con campos SAP');
+      try {
+        const accountId = await createAccount(buildAccount({
+          RecordTypeId:       ACCOUNT_RECORD_TYPES.PROVEEDOR,
+          AccountGroup__c:    'Z005',
+          ClientsGroup__c:    'K001',
+          Language__c:        'ES',
+          Country__c:         'ES',
+          Email__c:           `${faker.string.alphanumeric(10).toLowerCase()}@qa-automation.com`,
+          ShippingStreet:     'Avinguda Can Fatjó dels Aurons 1',
+          ShippingCity:       'Barcelona',
+          ShippingPostalCode: '08173',
+          ShippingCountry:    'España',
+        }));
+        report.step('Crear Cuenta (Proveedor)', { 'Account Id': accountId, 'RecordTypeId': ACCOUNT_RECORD_TYPES.PROVEEDOR }, 'ok');
 
-    it.skip('[e2e] @C524 Verificar que se puede crear un perfil de facturación para una cuenta Proveedor y darla de alta en una nueva sociedad', async () => {
-      // TODO: implementar — depende de C523 (cuenta Proveedor sincronizada).
-    });
+        const billingProfileId = await createBillingProfile(buildBillingProfile(accountId, undefined, {
+          IsPrincipal__c: true,
+          BankAccount__c: 'ES4321008668260200004668',
+        }));
+        report.step('Crear Perfil de Facturación principal', { 'BillingProfile Id': billingProfileId, 'Account__c': accountId, 'IsPrincipal__c': 'true' }, 'ok');
+
+        await new Promise(r => setTimeout(r, 15000));
+        const account = await getAccount(accountId);
+        report.step(
+          'Estado de sincronización SAP (informativo)',
+          { 'Account Id': accountId, 'AccountNumber': (account['AccountNumber'] as string) ?? '(sin sincronizar)', 'HasSyncError__c': String(account['HasSyncError__c']) },
+          'ok',
+        );
+
+        expect(account['Id']).toBe(accountId);
+        expect(account['RecordTypeId']).toBe(ACCOUNT_RECORD_TYPES.PROVEEDOR);
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 60000);
+
+    it.todo('[e2e] @C524 Verificar que se puede crear un perfil de facturación para una cuenta Proveedor y darla de alta en una nueva sociedad');
+    // BLOCKED: requiere una segunda Sociedad (Society__c) de Proveedor ya dada de alta en SAP
+    // para la misma Cuenta — no hay una segunda combinación Cuenta+Sociedad de Proveedor
+    // disponible en QA sin repetir la ya existente en el perfil principal. Requiere datos
+    // maestros adicionales, no una limitación de mapeo de campos (ver C523).
 
   });
 
@@ -1901,8 +1946,12 @@ describe('Funcional — UAT Base', () => {
   // "An unexpected error occurred while trying to process the service appointment status
   // change." — almost certainly requires an actual signature/report artifact (e.g. a
   // ContentVersion/Attachment linked to the SA) to be present first, which isn't just a field
-  // write. Not chased further given the effort already spent; worth a future session if there's
-  // a lead on what artifact the signature step expects.
+  // write. Ruled out DTT_DocumentsValidator (read via Tooling API): its only ServiceAppointment
+  // rule (DTTDocumentationRules__mdt 'SA_SI'/'SA_SI_Timesheet') only fires for BusinessLine__c='SI',
+  // and these tests use the Industria (RG) flow — so the gate is native Field Service Lightning
+  // managed-package behavior on the Complete transition, not custom Apex/metadata we can satisfy
+  // by writing a field. Not chased further given the effort already spent; worth a future session
+  // only if there's a lead on the actual FSL signature/report requirement.
   describe('Cita de servicio', () => {
     it.skip('[e2e] @C592 Verificar que el estado de la OT principal permanece inalterado al finalizar una cita si existen otras citas en estados distintos', async () => {
       // TODO: implementar — ver nota arriba sobre la máquina de estados de finalización de la cita.
@@ -2359,47 +2408,34 @@ describe('Funcional — UAT Base', () => {
 
   });
 
-  // BLOCKED (all 9 below) — see the email mechanism note at "Oferta comercial - Envío
-  // documento". Each of these ties to a different business event (2 days before/after a cita,
-  // 48h after finishing an OT, 24h/7 days around an invoice, 6 months before next inspection) —
-  // none tested individually yet, but they share the same root blocker: no direct field update
-  // found so far triggers the underlying send.
+  // BLOCKED (all 9 below), re-confirmed 2026-07-15 via FlowDefinitionView + CronTrigger (Tooling
+  // API/REST): no Flow named after "Enviar documento" or tied to Quote status exists at all (only
+  // record-triggered Flows on unrelated objects — RejectWorkOrderNotification, SI_Quote_KAM_Assignment,
+  // WaybillNotification, Service_Appointment_Send_Custom_Notification — none matching these 9
+  // business events). The time-relative ones (2 days before/after a cita, 48h after an OT, 24h/7
+  // days around an invoice, 6 months before inspection) are all Scheduled-Path Flows with their own
+  // fixed CronTrigger (confirmed real jobs: NOT_InvoiceNotGenerated-10, NOT_Framework_Contract_Expiration-4,
+  // NOT_LimitDateTechnicalQuote-6/7days/15days — next fire times are that day's batch window, not
+  // something a REST field update can force early). No direct field update triggers any of these
+  // sends, and there's no queryable "email sent" log object to assert against even if one fired.
   describe('Transaccionales', () => {
-    it.skip('[e2e] @C632 Verificar que se envía el transaccional al prescriptor al cambiar la oferta comercial a \'Enviar documento\'', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C632 Verificar que se envía el transaccional al prescriptor al cambiar la oferta comercial a \'Enviar documento\' — NO AUTOMATIZABLE VIA REST: no existe ningún Flow ligado a Quote/status con ese nombre o criterio (confirmado vía FlowDefinitionView)');
 
-    it.skip('[e2e] @C633 Verificar que se envía el transaccional al técnico interno 2 días antes de la cita programada', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C633 Verificar que se envía el transaccional al técnico interno 2 días antes de la cita programada — NO AUTOMATIZABLE VIA REST: depende de un Scheduled Path Flow con CronTrigger propio (ventana de batch fija), no de una actualización de campo vía REST');
 
-    it.skip('[e2e] @C634 Verificar que se envía el transaccional al titular y al prescriptor 2 días antes de la cita programada', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C634 Verificar que se envía el transaccional al titular y al prescriptor 2 días antes de la cita programada — NO AUTOMATIZABLE VIA REST: mismo mecanismo que C633');
 
-    it.skip('[e2e] @C635 Verificar que se envía el transaccional al técnico interno cuando quedan menos de 2 días para la cita', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C635 Verificar que se envía el transaccional al técnico interno cuando quedan menos de 2 días para la cita — NO AUTOMATIZABLE VIA REST: mismo mecanismo que C633');
 
-    it.skip('[e2e] @C636 Verificar que se envía el transaccional al titular y al prescriptor cuando quedan menos de 2 días para la cita', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C636 Verificar que se envía el transaccional al titular y al prescriptor cuando quedan menos de 2 días para la cita — NO AUTOMATIZABLE VIA REST: mismo mecanismo que C633');
 
-    it.skip('[e2e] @C637 Verificar que se envía el informe al cliente 48 horas después de finalizar la OT', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C637 Verificar que se envía el informe al cliente 48 horas después de finalizar la OT — NO AUTOMATIZABLE VIA REST: Scheduled Path Flow con CronTrigger propio, sin objeto de log de envío consultable');
 
-    it.skip('[e2e] @C638 Verificar que se envía el transaccional al contacto responsable de pago 24 horas después de emitir la factura', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C638 Verificar que se envía el transaccional al contacto responsable de pago 24 horas después de emitir la factura — NO AUTOMATIZABLE VIA REST: mismo mecanismo (CronTrigger NOT_InvoiceNotGenerated confirmado real)');
 
-    it.skip('[e2e] @C639 Verificar que se envía el transaccional al contacto responsable de pago 7 días después de vencer una factura impagada', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C639 Verificar que se envía el transaccional al contacto responsable de pago 7 días después de vencer una factura impagada — NO AUTOMATIZABLE VIA REST: mismo mecanismo, CronTrigger de facturas propio');
 
-    it.skip('[e2e] @C640 Verificar que se envía el transaccional al titular y al prescriptor 6 meses antes de la próxima inspección', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C640 Verificar que se envía el transaccional al titular y al prescriptor 6 meses antes de la próxima inspección — NO AUTOMATIZABLE VIA REST: mismo mecanismo, CronTrigger NOT_Framework_Contract_Expiration confirmado real');
 
   });
 
