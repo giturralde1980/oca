@@ -1613,16 +1613,12 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Registro de producción - ZSER', () => {
-    it.skip('[e2e] @C611 Verificar que se genera el registro de producción y el log de técnicos al albaranar o desalbaranar una línea de pedido', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C611 Verificar que se genera el registro de producción y el log de técnicos al albaranar o desalbaranar una línea de pedido — NO AUTOMATIZABLE VIA REST: el trigger activo NBK_ProductionHistoryEntryTrigger sobre ProductionHistoryEntry__c está IsValid=false en QA (roto desde 2026-04-14, Release Admin); probado empíricamente además — alternar WorkOrder.Waybilled__c no genera ningún ProductionHistoryEntry__c ni TechnicianLog__c');
 
   });
 
   describe('Registro de producción - ZOBR', () => {
-    it.skip('[e2e] @C612 Verificar que se genera el registro de producción y el log de técnicos al albaranar o desalbaranar una orden de trabajo', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C612 Verificar que se genera el registro de producción y el log de técnicos al albaranar o desalbaranar una orden de trabajo — NO AUTOMATIZABLE VIA REST: mismo motivo que C611 (NBK_ProductionHistoryEntryTrigger IsValid=false, ver nota del describe anterior)');
 
   });
 
