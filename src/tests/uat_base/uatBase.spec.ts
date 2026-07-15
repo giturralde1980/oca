@@ -47,6 +47,8 @@ import { getOrgRefs } from '../../config/org-refs';
 import { setupMAQuote, winMAQuoteAndGetOrder, ACTIVE_COMMERCIAL_USER_ID } from '../../helpers/steps/ma-quote.steps';
 import { getQuote, createQuoteLineItem } from '../../helpers/steps/quote.steps';
 import { setupFrameworkContract, setWinResponsibleFields } from '../../helpers/steps/framework-contract.steps';
+import { setupRGQuote, winRGQuoteAndGetOrder } from '../../helpers/steps/rg-quote.steps';
+import { createPurchaseOrder, createPurchaseOrderLine, SUPPLIER_ACCOUNT_ID_2 } from '../../helpers/steps/purchase-order.steps';
 
 // Source Quote used to seed line-item pricing data (same one used by the proven
 // Industria E2E flow — reused here per business decision, see src/tests/e2e/quotes/industria).
@@ -1044,17 +1046,97 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Pedido de compra', () => {
-    it.skip('[e2e] @C567 Verificar que se puede crear un pedido de compra relacionado a un pedido de venta', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C567 Verificar que se puede crear un pedido de compra relacionado a un pedido de venta', async () => {
+      const report = new TestReport('C567 — Crear Pedido de Compra relacionado a un Pedido de venta');
+      try {
+        const refs = getOrgRefs('RG', 'INS');
+        const { quoteId } = await setupRGQuote(report);
+        const orderId = await winRGQuoteAndGetOrder(quoteId, report);
+        const [salesLine] = await sfQuery.query<{ Id: string }>(`SELECT Id FROM OrderItem WHERE OrderId = '${orderId}'`);
+        expect(salesLine).toBeTruthy();
 
-    it.skip('[e2e] @C568 Verificar que se pueden crear líneas de pedido de compra para líneas de pedido de venta con distintos precios', async () => {
-      // TODO: implementar
-    });
+        const { purchaseOrderId } = await createPurchaseOrder(report);
+        const poLineId = await createPurchaseOrderLine(purchaseOrderId, salesLine.Id, refs.qli.pricebookEntryId, 120, report);
 
-    it.skip('[e2e] @C569 Verificar que se puede crear un segundo pedido de compra para otro proveedor relacionado al mismo pedido de venta', async () => {
-      // TODO: implementar
-    });
+        const [poLine] = await sfQuery.query<{ Id: string; PurchaseOrderLineNumber__c: string }>(
+          `SELECT Id, PurchaseOrderLineNumber__c FROM OrderItem WHERE Id = '${poLineId}'`
+        );
+        expect(poLine.PurchaseOrderLineNumber__c).toBe(salesLine.Id);
+        report.step(
+          'Verificar Pedido de Compra vinculado al Pedido de venta',
+          { 'Purchase Order Id': purchaseOrderId, 'Sales Order Id': orderId, 'Línea vinculada': poLine.PurchaseOrderLineNumber__c },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 120000);
+
+    it('[e2e] @C568 Verificar que se pueden crear líneas de pedido de compra para líneas de pedido de venta con distintos precios', async () => {
+      const report = new TestReport('C568 — Líneas de Pedido de Compra con distintos precios');
+      try {
+        const refs = getOrgRefs('RG', 'INS');
+        const { quoteId } = await setupRGQuote(report);
+        const orderId = await winRGQuoteAndGetOrder(quoteId, report);
+        const [salesLine] = await sfQuery.query<{ Id: string }>(`SELECT Id FROM OrderItem WHERE OrderId = '${orderId}'`);
+
+        const { purchaseOrderId } = await createPurchaseOrder(report);
+        const lineA = await createPurchaseOrderLine(purchaseOrderId, salesLine.Id, refs.qli.pricebookEntryId, 100, report);
+        const lineB = await createPurchaseOrderLine(purchaseOrderId, salesLine.Id, refs.qli.pricebookEntryId, 150, report);
+
+        const lines = await sfQuery.query<{ Id: string; UnitPrice: number }>(
+          `SELECT Id, UnitPrice FROM OrderItem WHERE OrderId = '${purchaseOrderId}'`
+        );
+        expect(lines.length).toBe(2);
+        const priceA = lines.find(l => l.Id === lineA)?.UnitPrice;
+        const priceB = lines.find(l => l.Id === lineB)?.UnitPrice;
+        expect(priceA).toBe(100);
+        expect(priceB).toBe(150);
+        report.step(
+          'Verificar líneas con distintos precios',
+          { 'Purchase Order Id': purchaseOrderId, 'Línea A': `${lineA} = ${priceA}`, 'Línea B': `${lineB} = ${priceB}` },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 120000);
+
+    it('[e2e] @C569 Verificar que se puede crear un segundo pedido de compra para otro proveedor relacionado al mismo pedido de venta', async () => {
+      const report = new TestReport('C569 — Segundo Pedido de Compra (otro proveedor) para el mismo Pedido de venta');
+      try {
+        const refs = getOrgRefs('RG', 'INS');
+        const { quoteId } = await setupRGQuote(report);
+        const orderId = await winRGQuoteAndGetOrder(quoteId, report);
+        const [salesLine] = await sfQuery.query<{ Id: string }>(`SELECT Id FROM OrderItem WHERE OrderId = '${orderId}'`);
+
+        const { purchaseOrderId: po1 } = await createPurchaseOrder(report);
+        await createPurchaseOrderLine(po1, salesLine.Id, refs.qli.pricebookEntryId, 120, report);
+
+        const { purchaseOrderId: po2 } = await createPurchaseOrder(report, SUPPLIER_ACCOUNT_ID_2);
+        await createPurchaseOrderLine(po2, salesLine.Id, refs.qli.pricebookEntryId, 120, report);
+
+        const relatedPOs = await sfQuery.query<{ OrderId: string }>(
+          `SELECT OrderId FROM OrderItem WHERE PurchaseOrderLineNumber__c = '${salesLine.Id}'`
+        );
+        const distinctOrders = new Set(relatedPOs.map(r => r.OrderId));
+        expect(distinctOrders.has(po1)).toBe(true);
+        expect(distinctOrders.has(po2)).toBe(true);
+        report.step(
+          'Verificar dos Pedidos de Compra distintos relacionados al mismo Pedido de venta',
+          { 'Pedido de venta línea': salesLine.Id, 'PO 1': po1, 'PO 2': po2 },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 120000);
 
     it.skip('[e2e] @C570 Verificar que solo se muestran las líneas de pedido de venta aún no albaranadas al generar líneas de pedido de compra', async () => {
       // TODO: implementar
