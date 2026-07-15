@@ -1958,12 +1958,18 @@ describe('Funcional — UAT Base', () => {
       }
     }, 180000);
 
+    // IN PROGRESS — mismo bloqueo raíz que C581/C610 (ver esas notas): probado empíricamente que
+    // poner WorkOrder.Waybilled__c=true en LAS DOS OTs de un pedido MA/INS ZOBR no cambia
+    // OrderItem.Status__c (se queda en 'new', no pasa a 'completed'/Realizado) — confirma que el
+    // WorkOrder.Waybilled__c directo (usado en C605/C607) es un atajo que no dispara el cascade
+    // real hacia OrderItem; ese cascade solo ocurre por el camino validado que exige los campos de
+    // "Inspection Data" aún no identificados (ver C581).
     it.skip('[e2e] @C608 Verificar que el estado de la línea de pedido cambia a \'Realizado\' al albaranar todas sus OTs', async () => {
-      // TODO: implementar
+      // TODO: implementar — depende de resolver el bloqueo de "Inspection Data" (ver C581/C610).
     });
 
     it.skip('[e2e] @C609 Verificar que el estado de la línea de pedido se actualiza correctamente al desalbaranar una OT ya albaranada', async () => {
-      // TODO: implementar
+      // TODO: implementar — depende de resolver el bloqueo de "Inspection Data" (ver C581/C610).
     });
 
   });
