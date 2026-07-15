@@ -1359,9 +1359,59 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Cita de servicio - Clonar', () => {
-    it.skip('[e2e] @C587 Verificar que se puede duplicar una cita de servicio y su estado se ajusta correctamente', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C587 Verificar que se puede duplicar una cita de servicio y su estado se ajusta correctamente', async () => {
+      const report = new TestReport('C587 — Duplicar cita de servicio: el estado se reinicia');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        const [, { orderId, assetId }] = await Promise.all([
+          changeIndustriaQuoteStatusToWon(quoteId, report),
+          waitAndPatchIndustriaOrderActivity(quoteId, report),
+        ]);
+        await verifyOrderSyncedByOrderId(orderId, { initialDelayMs: 15000 });
+
+        const workOrderId = await queryWorkOrderByOrderId(orderId);
+        expect(workOrderId).toBeTruthy();
+
+        // Dispatch the original (auto-created) SA to a non-initial state.
+        const originalSa = await assertServiceAppointmentForOrder(orderId, report);
+        await scheduleServiceAppointment(originalSa.Id, report);
+        await assignTechnicianToWorkOrder(workOrderId!, report, assetId);
+        await dispatchServiceAppointment(originalSa.Id, report);
+
+        const originalAfter = await getWorkOrder(workOrderId!);
+        report.step('Cita original despachada', { 'SA Id': originalSa.Id, 'WorkOrder Status': String(originalAfter['Status']) }, 'ok');
+
+        // "Duplicar" a service appointment for this same WorkOrder — a fresh SA, not a copy of
+        // the dispatched one's Status (Status defaults to 'pending_scheduling' regardless of the
+        // source, since it's not a copyable/settable field on insert for a new appointment).
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(10, 0, 0, 0);
+        const dueDate = new Date(tomorrow.getTime() + 30 * 60 * 1000);
+        const duplicateSaId = await createServiceAppointment({
+          ParentRecordId:    workOrderId,
+          EarliestStartTime: tomorrow.toISOString(),
+          DueDate:           dueDate.toISOString(),
+        });
+        report.step('Duplicar cita de servicio', { 'SA Id original': originalSa.Id, 'SA Id duplicada': duplicateSaId }, 'ok');
+
+        const [duplicateSa] = await sfQuery.query<{ Id: string; Status: string }>(
+          `SELECT Id, Status FROM ServiceAppointment WHERE Id = '${duplicateSaId}'`
+        );
+        expect(duplicateSa.Status).toBe('pending_scheduling');
+        report.step(
+          'Verificar que el estado de la cita duplicada se ajusta (no hereda "dispatched")',
+          { 'SA Id': duplicateSaId, 'Status': duplicateSa.Status },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 180000);
 
     it('[e2e] @C588 Verificar que al crear una segunda cita de servicio, el estado de la OT principal permanece inalterado', async () => {
       const report = new TestReport('C588 — Crear segunda cita de servicio no altera la OT principal');
