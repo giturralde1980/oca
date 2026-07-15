@@ -1959,8 +1959,15 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Albaranado', () => {
+    // IN PROGRESS — igual que C581 (ver nota en 'Pedido de venta - Albaranado'): finalizar la OT
+    // (Status='4') ya funciona con AssignedInspector__c + AssetId + Justificaci_n_del_cierre_manual__c,
+    // pero OrderItem.Waybilled__c=true sigue rechazado con "Before delivery note, you must fill in
+    // the fields in the 'Inspection Data' section of the related work order." Se buscó el origen
+    // exacto (Validation Rules activas de OrderItem, Custom Labels/ExternalString, Flows
+    // Albarando_WorkOrder y Desalbaranado_WorkOrder) sin encontrarlo — probablemente vive en Apex
+    // (addError con mensaje literal) o en un Flow no identificado aún. Pendiente de retomar.
     it.skip('[e2e] @C610 Verificar que se puede albaranar una línea comercial vinculada a una OT de visita finalizada', async () => {
-      // TODO: implementar
+      // TODO: implementar — ver nota del describe sobre los campos de "Inspection Data" pendientes.
     });
 
   });
