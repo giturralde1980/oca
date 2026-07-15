@@ -1149,12 +1149,22 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Pedido de venta', () => {
+    // BLOCKED en QA por un bug real de Apex (no arquitectónico — ver nota de entorno en
+    // memoria/histórico de la suite, puede cambiar en cualquier redeploy): probado empíricamente
+    // subiendo OrderItem.Quantity de 1 a 2 en un pedido MA/INS ZOBR ya ganado (2 OTs generadas) —
+    // la propia OT/OrderItem trigger revienta con NullPointerException:
+    // 'NBK_OrderItemTriggerHelper.cloneWorkOrders: Attempt to de-reference a null object'
+    // (NBK_OrderItemTriggerController.afterUpdate → handleWorkOrdersAndSkills → cloneWorkOrders).
+    // NBK_OrderItemTriggerHelper fue modificada el 2026-07-14T06:19:17 por 'Release Admin' — el
+    // MISMO timestamp exacto que las clases rotas de Facturación (ver describe de Facturación) —
+    // confirma que el deploy de ayer rompió más de un área a la vez, no solo Facturación.
     it.skip('[e2e] @C564 Verificar que al reducir la cantidad de un complemento que genera OT se recalcula el precio y las OTs sobrantes deben cancelarse manualmente', async () => {
-      // TODO: implementar
+      // TODO: retomar cuando NBK_OrderItemTriggerHelper.cloneWorkOrders esté arreglada en QA.
     });
 
     it.skip('[e2e] @C565 Verificar que al aumentar la cantidad de un complemento que genera OT se recalcula el precio y se genera una nueva OT', async () => {
-      // TODO: implementar
+      // TODO: retomar cuando NBK_OrderItemTriggerHelper.cloneWorkOrders esté arreglada en QA — ver
+      // nota del describe (NullPointerException confirmado al subir Quantity).
     });
 
     it('[e2e] @C566 Verificar que se puede configurar un pedido de venta con productos del catálogo y del contrato marco correspondiente', async () => {
