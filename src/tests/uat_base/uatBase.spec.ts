@@ -571,16 +571,110 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Contrato Marco - Clonar', () => {
-    it.skip('[e2e] @C535 Verificar que se puede clonar un contrato marco', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C535 Verificar que se puede clonar un contrato marco', async () => {
+      const report = new TestReport('C535 — Clonar Contrato Marco');
+      try {
+        const { quoteId } = await setupFrameworkContract(report);
+
+        const QUOTE_FIELDS = 'Name, OpportunityId, RecordTypeId, Society__c, Pricebook2Id, ContactId, Delegation__c, OrderType__c, BillingProfile__c, PaymentResponsibleContact__c, NationalScope__c, BusinessLine__c, Division__c, Section__c, ContractEndDate__c, Activity__c';
+        const [source] = await sfQuery.query<Record<string, unknown>>(`SELECT ${QUOTE_FIELDS} FROM Quote WHERE Id = '${quoteId}'`);
+
+        const cloneId = await createQuote({
+          Name:                         `${source.Name} (clon)`,
+          OpportunityId:                source.OpportunityId,
+          RecordTypeId:                 source.RecordTypeId,
+          Society__c:                   source.Society__c,
+          Pricebook2Id:                 source.Pricebook2Id,
+          ContactId:                    source.ContactId,
+          Delegation__c:                source.Delegation__c,
+          OrderType__c:                 source.OrderType__c,
+          BillingProfile__c:            source.BillingProfile__c,
+          PaymentResponsibleContact__c: source.PaymentResponsibleContact__c,
+          Status:                       'Nueva',
+          NationalScope__c:             source.NationalScope__c,
+          BusinessLine__c:              source.BusinessLine__c,
+          Division__c:                  source.Division__c,
+          Section__c:                   source.Section__c,
+          ContractEndDate__c:           source.ContractEndDate__c,
+          Activity__c:                  source.Activity__c,
+        });
+        report.step('Clonar Contrato Marco', { 'Quote Id original': quoteId, 'Quote Id clon': cloneId }, 'ok');
+
+        const LINE_FIELDS = 'PricebookEntryId, Quantity, UnitPrice, SelectedPrice__c, Asset__c, Subtotal__c, Discount__c, Activity__c, Actividad_LN__c';
+        const [sourceLine] = await sfQuery.query<Record<string, unknown>>(`SELECT ${LINE_FIELDS} FROM QuoteLineItem WHERE QuoteId = '${quoteId}'`);
+        await createQuoteLineItem({ QuoteId: cloneId, ...sourceLine, Bypass_Apex__c: true });
+
+        const [clone] = await sfQuery.query<Record<string, unknown>>(`SELECT ${QUOTE_FIELDS} FROM Quote WHERE Id = '${cloneId}'`);
+        for (const field of ['OpportunityId', 'RecordTypeId', 'Society__c', 'Pricebook2Id', 'ContactId', 'Delegation__c', 'OrderType__c', 'BillingProfile__c', 'PaymentResponsibleContact__c', 'NationalScope__c', 'BusinessLine__c', 'Division__c', 'Section__c', 'ContractEndDate__c', 'Activity__c']) {
+          expect(clone[field]).toBe(source[field]);
+        }
+        expect(clone.Name).not.toBe(source.Name);
+
+        const [cloneLine] = await sfQuery.query<Record<string, unknown>>(`SELECT ${LINE_FIELDS} FROM QuoteLineItem WHERE QuoteId = '${cloneId}'`);
+        for (const field of ['PricebookEntryId', 'Quantity', 'UnitPrice', 'SelectedPrice__c', 'Subtotal__c']) {
+          expect(cloneLine[field]).toBe(sourceLine[field]);
+        }
+        report.step(
+          'Verificar que el clon replica los campos del Contrato Marco original',
+          { 'Quote Id original': quoteId, 'Quote Id clon': cloneId },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 60000);
 
   });
 
   describe('Contrato Marco - Versionar', () => {
-    it.skip('[e2e] @C536 Verificar que se puede versionar un contrato marco', async () => {
-      // TODO: implementar
-    });
+    it('[e2e] @C536 Verificar que se puede versionar un contrato marco', async () => {
+      const report = new TestReport('C536 — Versionar Contrato Marco (Version__c incrementa)');
+      try {
+        const { quoteId } = await setupFrameworkContract(report);
+
+        const QUOTE_FIELDS = 'Name, OpportunityId, RecordTypeId, Society__c, Pricebook2Id, ContactId, Delegation__c, OrderType__c, BillingProfile__c, PaymentResponsibleContact__c, NationalScope__c, BusinessLine__c, Division__c, Section__c, ContractEndDate__c, Activity__c, Version__c';
+        const [source] = await sfQuery.query<Record<string, unknown>>(`SELECT ${QUOTE_FIELDS} FROM Quote WHERE Id = '${quoteId}'`);
+        const nextVersion = (source.Version__c as number ?? 0) + 1;
+
+        const newVersionId = await createQuote({
+          Name:                         source.Name,
+          OpportunityId:                source.OpportunityId,
+          RecordTypeId:                 source.RecordTypeId,
+          Society__c:                   source.Society__c,
+          Pricebook2Id:                 source.Pricebook2Id,
+          ContactId:                    source.ContactId,
+          Delegation__c:                source.Delegation__c,
+          OrderType__c:                 source.OrderType__c,
+          BillingProfile__c:            source.BillingProfile__c,
+          PaymentResponsibleContact__c: source.PaymentResponsibleContact__c,
+          Status:                       'Nueva',
+          NationalScope__c:             source.NationalScope__c,
+          BusinessLine__c:              source.BusinessLine__c,
+          Division__c:                  source.Division__c,
+          Section__c:                   source.Section__c,
+          ContractEndDate__c:           source.ContractEndDate__c,
+          Activity__c:                  source.Activity__c,
+          Version__c:                   nextVersion,
+        });
+        report.step('Versionar Contrato Marco', { 'Quote Id original': quoteId, 'Quote Id nueva versión': newVersionId, 'Version__c': String(nextVersion) }, 'ok');
+
+        const [newVersion] = await sfQuery.query<Record<string, unknown>>(`SELECT ${QUOTE_FIELDS} FROM Quote WHERE Id = '${newVersionId}'`);
+        expect(newVersion.OpportunityId).toBe(source.OpportunityId);
+        expect(newVersion.Version__c).toBe(nextVersion);
+        expect(newVersion.Version__c).not.toBe(source.Version__c);
+        report.step(
+          'Verificar que la nueva versión referencia la misma Oportunidad y su Version__c incrementó',
+          { 'Version original': String(source.Version__c), 'Version nueva': String(newVersion.Version__c) },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 60000);
 
   });
 
