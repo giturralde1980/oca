@@ -8,6 +8,8 @@
     "test:stg": "cross-env TEST_ENV=stg jest --config jest.config.ts",
     "test:prd": "cross-env TEST_ENV=prd jest --config jest.config.ts",
 
+    "test:qa:uat": "cross-env TEST_ENV=qa jest --config jest.config.ts --testPathPatterns uat_base",
+
 "find-test-data":     "node node_modules/ts-node/dist/bin.js src/scripts/find-test-data.ts qa",
     "find-test-data:int": "node node_modules/ts-node/dist/bin.js src/scripts/find-test-data.ts int",
     "find-test-data:qa":  "node node_modules/ts-node/dist/bin.js src/scripts/find-test-data.ts qa",
