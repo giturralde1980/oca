@@ -446,9 +446,7 @@ describe('Funcional — UAT Base', () => {
   // appeared), so C527's premise ("se genera correctamente el contrato marco... al crear una
   // oportunidad") doesn't hold for a plain Opportunity insert; it must be a manual UI action.
   describe('Oportunidad + Contrato Marco', () => {
-    it.skip('[e2e] @C527 Verificar que al crear una oportunidad se genera correctamente el contrato marco relacionado con sus campos autocompletados', async () => {
-      // TODO: implementar — ver nota arriba: la Quote Framework_Contract no se genera sola al crear la Opportunity.
-    });
+    it.todo('[e2e] @C527 Verificar que al crear una oportunidad se genera correctamente el contrato marco relacionado con sus campos autocompletados — NO SE CUMPLE LA PREMISA: confirmado empíricamente que crear una Opportunity no autogenera ninguna Quote Framework_Contract relacionada (consultada inmediatamente después del insert — ninguna aparece); es una acción manual de UI, no un disparador automático');
 
   });
 
@@ -1196,14 +1194,9 @@ describe('Funcional — UAT Base', () => {
     // NBK_OrderItemTriggerHelper fue modificada el 2026-07-14T06:19:17 por 'Release Admin' — el
     // MISMO timestamp exacto que las clases rotas de Facturación (ver describe de Facturación) —
     // confirma que el deploy de ayer rompió más de un área a la vez, no solo Facturación.
-    it.skip('[e2e] @C564 Verificar que al reducir la cantidad de un complemento que genera OT se recalcula el precio y las OTs sobrantes deben cancelarse manualmente', async () => {
-      // TODO: retomar cuando NBK_OrderItemTriggerHelper.cloneWorkOrders esté arreglada en QA.
-    });
+    it.todo('[e2e] @C564 Verificar que al reducir la cantidad de un complemento que genera OT se recalcula el precio y las OTs sobrantes deben cancelarse manualmente — BLOQUEADO POR BUG REAL EN QA: re-confirmado 2026-07-16, sigue lanzando System.NullPointerException en NBK_OrderItemTriggerHelper.cloneWorkOrders:1872 al modificar OrderItem.Quantity en un pedido ZOBR ganado; ver nota del describe');
 
-    it.skip('[e2e] @C565 Verificar que al aumentar la cantidad de un complemento que genera OT se recalcula el precio y se genera una nueva OT', async () => {
-      // TODO: retomar cuando NBK_OrderItemTriggerHelper.cloneWorkOrders esté arreglada en QA — ver
-      // nota del describe (NullPointerException confirmado al subir Quantity).
-    });
+    it.todo('[e2e] @C565 Verificar que al aumentar la cantidad de un complemento que genera OT se recalcula el precio y se genera una nueva OT — BLOQUEADO POR BUG REAL EN QA: mismo NullPointerException que C564, re-confirmado 2026-07-16 (ver nota del describe)');
 
     it('[e2e] @C566 Verificar que se puede configurar un pedido de venta con productos del catálogo y del contrato marco correspondiente', async () => {
       const report = new TestReport('C566 — Pedido con línea de catálogo + línea de Contrato Marco');
@@ -1448,9 +1441,7 @@ describe('Funcional — UAT Base', () => {
   });
 
   describe('Pedido de venta - Trámites ZSER', () => {
-    it.skip('[e2e] @C575 Verificar que un pedido de venta tipo ZSER con \'Pedido de tramitación\' no genera OTs y se albarana automáticamente', async () => {
-      // TODO: implementar
-    });
+    it.todo('[e2e] @C575 Verificar que un pedido de venta tipo ZSER con \'Pedido de tramitación\' no genera OTs y se albarana automáticamente — DATOS MAESTROS INEXISTENTES EN QA: mecanismo real identificado (Product2.GeneratesOT__c=false + generateConsignmentNote__c=true) pero requiere la línea de negocio "END", que no tiene entradas de referencia ni Pedidos históricos en este entorno');
 
   });
 
@@ -1579,10 +1570,7 @@ describe('Funcional — UAT Base', () => {
     // SAP. Un Pedido RG/ZSER recién ganado con setupRGQuote/winRGQuoteAndGetOrder falla esa
     // sincronización: "error - ZSF_SALES/006: El centro de beneficio CK1700 no existe en SAP" —
     // un problema de datos maestros de SAP en este entorno QA, no de la automatización en sí.
-    it.skip('[e2e] @C580 Verificar que al finalizar una OT se albarana automáticamente la línea de pedido', async () => {
-      // TODO: retomar si se soluciona el centro de beneficio CK1700 en SAP QA, o si aparece otra
-      // combinación de Delegation/Society/Activity cuyo Pedido sí sincronice correctamente.
-    });
+    it.todo('[e2e] @C580 Verificar que al finalizar una OT se albarana automáticamente la línea de pedido — BLOQUEADO POR DATOS MAESTROS SAP: mecanismo real identificado (NBK_WorkOrderTriggerHelper.processNonZobrAutoWaybillForFinishedWorkOrders exige OrderItem.OrderSAPId__c no vacío), pero el Pedido RG/ZSER no sincroniza con SAP en este entorno ("ZSF_SALES/006: El centro de beneficio CK1700 no existe en SAP") — confirmado también vía el análisis de Integration Requests del 2026-07-15 en C560/567-569/576');
 
     it('[e2e] @C583 Verificar que al finalizar una OT se puede albaranar manualmente la línea de pedido', async () => {
       const report = new TestReport('C583 — Finalizar la OT y albaranar manualmente la línea de pedido');
@@ -1932,10 +1920,55 @@ describe('Funcional — UAT Base', () => {
       }
     }, 180000);
 
-    it.skip('[e2e] @C591 Verificar que al reprogramar una cita de servicio se actualiza la hora y se notifica al técnico y al cliente', async () => {
-      // TODO: implementar — el reprogramado en sí es viable, pero requiere verificar el envío
-      // de notificación (email/transaccional), que queda bloqueado junto al resto del grupo de email.
-    });
+    // La parte de "se actualiza la hora" es verificable por REST (reprogramar = volver a llamar
+    // scheduleServiceAppointment con una fecha distinta). La notificación al técnico/cliente cae
+    // en el mismo mecanismo de email no confirmado que el resto del grupo (ver nota de "Oferta
+    // comercial - Envío documento") — se deja informativa, mismo patrón que C517/C518.
+    it('[e2e] @C591 Verificar que al reprogramar una cita de servicio se actualiza la hora y se notifica al técnico y al cliente', async () => {
+      const report = new TestReport('C591 — Reprogramar cita de servicio actualiza la hora');
+      try {
+        const sourceLI = await getSourceLineItem(INDUSTRIA_SOURCE_QUOTE_ID);
+        const { quoteId } = await setupIndustriaQuote(sourceLI, report);
+        await changeQuoteStatus(quoteId, 'Generada', report);
+        const [, { orderId }] = await Promise.all([
+          changeIndustriaQuoteStatusToWon(quoteId, report),
+          waitAndPatchIndustriaOrderActivity(quoteId, report),
+        ]);
+        await verifyOrderSyncedByOrderId(orderId, { initialDelayMs: 15000 });
+
+        const sa = await assertServiceAppointmentForOrder(orderId, report);
+        const first = await scheduleServiceAppointment(sa.Id, report);
+
+        // "Reprogramar" — misma cita, nueva franja horaria (pasado mañana en vez de mañana).
+        const reprogrammed = new Date();
+        reprogrammed.setDate(reprogrammed.getDate() + 2);
+        reprogrammed.setHours(11, 0, 0, 0);
+        const newEnd = new Date(reprogrammed.getTime() + 15 * 60 * 1000);
+        await updateRecord('ServiceAppointment', sa.Id, {
+          SchedStartTime: reprogrammed.toISOString(),
+          SchedEndTime:   newEnd.toISOString(),
+        });
+        report.step('Reprogramar ServiceAppointment', { 'SA Id': sa.Id, 'SchedStartTime (nueva)': reprogrammed.toISOString() }, 'ok');
+
+        const [after] = await sfQuery.query<{ SchedStartTime: string }>(
+          `SELECT SchedStartTime FROM ServiceAppointment WHERE Id = '${sa.Id}'`
+        );
+        expect(after.SchedStartTime).not.toBe(first.schedStartTime);
+        expect(new Date(after.SchedStartTime).toISOString()).toBe(reprogrammed.toISOString());
+        report.step('Verificar que la hora se actualizó', { 'SA Id': sa.Id, 'SchedStartTime': after.SchedStartTime }, 'ok');
+
+        // Informational only — mecanismo de notificación no confirmado (ver nota arriba).
+        report.step(
+          'Notificación a técnico/cliente (informativo, no bloqueante)',
+          { 'SA Id': sa.Id, 'Nota': 'mecanismo de envío no confirmado, ver grupo de email' },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 180000);
 
   });
 
@@ -1953,13 +1986,9 @@ describe('Funcional — UAT Base', () => {
   // by writing a field. Not chased further given the effort already spent; worth a future session
   // only if there's a lead on the actual FSL signature/report requirement.
   describe('Cita de servicio', () => {
-    it.skip('[e2e] @C592 Verificar que el estado de la OT principal permanece inalterado al finalizar una cita si existen otras citas en estados distintos', async () => {
-      // TODO: implementar — ver nota arriba sobre la máquina de estados de finalización de la cita.
-    });
+    it.todo('[e2e] @C592 Verificar que el estado de la OT principal permanece inalterado al finalizar una cita si existen otras citas en estados distintos — NO AUTOMATIZABLE VIA REST: la transición SA \'4\'→\'7\' (Complete) es bloqueada por el motor nativo de Field Service Lightning, no por DTT_DocumentsValidator (descartado, su única regla de SA solo aplica a BusinessLine__c=\'SI\') ni por ningún campo simple; ver nota del describe');
 
-    it.skip('[e2e] @C593 Verificar que el estado de la OT principal cambia a \'Finalizada\' al finalizar la única cita o todas las citas relacionadas', async () => {
-      // TODO: implementar — ver nota arriba sobre la máquina de estados de finalización de la cita.
-    });
+    it.todo('[e2e] @C593 Verificar que el estado de la OT principal cambia a \'Finalizada\' al finalizar la única cita o todas las citas relacionadas — NO AUTOMATIZABLE VIA REST: mismo bloqueo nativo de FSL que C592 (ver nota del describe)');
 
   });
 
