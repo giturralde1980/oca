@@ -894,7 +894,7 @@ describe('Funcional — UAT Base', () => {
 
   });
 
-  // BLOCKED (C547 + the whole "Transaccionales" group + C591/C596/C597 below): the org sends
+  // BLOCKED (C547 + the whole "Transaccionales" group + C596/C597 below): the org sends
   // transactional email via two mechanisms — standard Salesforce email alerts (logged as a
   // Task with TaskSubtype='Email', related via WhatId) and Marketing Cloud Engagement/Pardot
   // triggered sends (logged in et4ae5__IndividualEmailResult__c, related via
@@ -904,6 +904,18 @@ describe('Funcional — UAT Base', () => {
   // with justification) for C596/C597 — none produced an email Task, an IndividualEmailResult,
   // or any cert/inspection-date field change. Same "Apex/Flow behind a UI action" pattern as
   // RTE — needs the real trigger identified before these can be implemented.
+  // Re-investigated 2026-07-16: confirmed the `SACompletada`/`SACompletada-EN` EmailTemplate
+  // exists (found via full EmailTemplate list) but is not referenced by any Flow
+  // (FlowDefinitionView), Approval Process (ProcessDefinition — only "RTE Approval" and two
+  // unrelated "Incompatibilidad" processes exist on WorkOrder), or Apex source (SOSL search for
+  // the literal name across ApexClass/ApexTrigger returned nothing). The only remaining
+  // candidate is a classic WorkflowRule/EmailAlert (pre-Flow declarative automation), which is
+  // NOT queryable via SOQL/Tooling API (`EmailAlert`/`WorkflowRule` aren't valid SOQL entities)
+  // — would need the SOAP Metadata API (listMetadata/readMetadata), not yet set up with this
+  // tooling. Also ruled out: `NOT_CriticalInspection` Flow (Active, fires on WorkOrder
+  // Status IN ('4','5','6') AND InspectionResult__c='5' i.e. Crítico) only sends a push/custom
+  // notification (`customNotificationAction`, CustomNotificationType 'CriticalInspection'), not
+  // an email, and isn't queryable as a persisted record via REST anyway.
   describe('Oferta comercial - Envío documento', () => {
     it.skip('[e2e] @C547 Verificar que al completar la URL del documento y pasar la oferta a \'Enviar documento\' se envía el transaccional al prescriptor', async () => {
       // TODO: implementar — ver nota arriba sobre el mecanismo de email bloqueado.
@@ -1671,17 +1683,62 @@ describe('Funcional — UAT Base', () => {
       }
     }, 180000);
 
-    // IN PROGRESS — probado empíricamente sobre una línea ya albaranada (Waybilled__c=true):
-    // modificar UnitPrice+Subtotal__c juntos (para no chocar con la Validation Rule de
-    // consistencia de precio ya conocida) SÍ se acepta — no existe una restricción "no se puede
-    // modificar el importe si ya está albaranada" en este escenario RG/ZSER — pero no se observó
-    // ningún efecto posterior por REST: ni se creó una OT nueva, ni OrderItem.Waybilled__c se
-    // reseteó a false. El "nuevo albaranado" que describe el test probablemente es un concepto
-    // del lado SAP (un nuevo documento de entrega remoto), no algo visible en Salesforce vía REST
-    // con los campos ya explorados.
-    it.skip('[e2e] @C582 Verificar que al modificar el importe de una línea de pedido se lanza un nuevo albaranado', async () => {
-      // TODO: implementar — ver nota del describe; no se encontró efecto observable por REST aún.
-    });
+    // Encontrado 2026-07-16: modificar UnitPrice+Subtotal__c juntos sobre una línea ya albaranada
+    // SÍ dispara un nuevo Integration_Request__c (SF_Record_Id__c = la línea, SF_Record_Object__c
+    // = 'Línea de Pedido', Mulesoft_Transaction_Flow__c con la clave "POST_SAP_WAYBILL") — ese es
+    // el "nuevo albaranado" real (un nuevo documento de entrega hacia SAP), no visible como cambio
+    // de campo en Salesforce. En QA ese envío falla en SAP por un dato de calidad ajeno a esta
+    // prueba (/IWCOR/CX_DS_EP_PROPERTY_ERROR: "La propiedad ProductionDate ... valor no válido"),
+    // así que se verifica que el intento se lanza, no que SAP lo acepte.
+    it('[e2e] @C582 Verificar que al modificar el importe de una línea de pedido se lanza un nuevo albaranado', async () => {
+      const report = new TestReport('C582 — Modificar importe de línea albaranada lanza nuevo albaranado');
+      try {
+        const { quoteId } = await setupRGQuote(report);
+        const orderId = await winRGQuoteAndGetOrder(quoteId, report);
+
+        const workOrderId = await queryWorkOrderByOrderId(orderId);
+        expect(workOrderId).toBeTruthy();
+        const [wo] = await sfQuery.query<{ AssetId: string }>(`SELECT AssetId FROM WorkOrder WHERE Id = '${workOrderId}'`);
+        await finalizeWorkOrderWithInspectionData(workOrderId!, wo.AssetId, report);
+
+        const [item] = await sfQuery.query<{ Id: string; UnitPrice: number }>(
+          `SELECT Id, UnitPrice FROM OrderItem WHERE OrderId = '${orderId}'`
+        );
+        expect(item).toBeTruthy();
+
+        await updateRecord('OrderItem', item.Id, { Waybilled__c: true });
+        report.step('Albaranar la línea de pedido (paso previo)', { 'OrderItem Id': item.Id }, 'ok');
+
+        const beforeChange = new Date();
+        const newPrice = item.UnitPrice + 10;
+        await updateRecord('OrderItem', item.Id, { UnitPrice: newPrice, Subtotal__c: newPrice });
+        report.step('Modificar importe de la línea albaranada', { 'OrderItem Id': item.Id, 'UnitPrice (nuevo)': String(newPrice) }, 'ok');
+
+        // El registro tarda ~20s en resolver: aparece con Status__c='pending' y
+        // Mulesoft_Transaction_Flow__c=null antes de poblarse (success o failed).
+        let newIR: { Id: string; Status__c: string; Mulesoft_Transaction_Flow__c: string } | undefined;
+        for (let attempt = 1; attempt <= 10 && !newIR; attempt++) {
+          await new Promise(r => setTimeout(r, 5000));
+          const irs = await sfQuery.query<{ Id: string; Status__c: string; Mulesoft_Transaction_Flow__c: string; CreatedDate: string }>(
+            `SELECT Id, Status__c, Mulesoft_Transaction_Flow__c, CreatedDate FROM Integration_Request__c
+             WHERE SF_Record_Id__c = '${item.Id}' AND CreatedDate >= ${beforeChange.toISOString()}
+             ORDER BY CreatedDate DESC`
+          );
+          newIR = irs.find(ir => (ir.Mulesoft_Transaction_Flow__c || '').includes('POST_SAP_WAYBILL'));
+        }
+
+        expect(newIR).toBeTruthy();
+        report.step(
+          'Verificar que se lanzó un nuevo albaranado (Integration Request POST_SAP_WAYBILL)',
+          { 'OrderItem Id': item.Id, 'Integration Request Id': newIR!.Id, 'Status__c': newIR!.Status__c },
+          'ok',
+        );
+      } finally {
+        report.finish();
+        report.logForTestRail();
+        suite.add(report);
+      }
+    }, 180000);
 
   });
 
@@ -1995,11 +2052,18 @@ describe('Funcional — UAT Base', () => {
   describe('Orden de trabajo - Grave', () => {
     it.todo('[e2e] @C594 Verificar que se activa la consola de generación manual de segundas visitas al finalizar una OT con resultado \'Grave\' o \'Crítico\' — NO AUTOMATIZABLE VIA REST: "se activa la consola" es un elemento de UI (visibilidad de una Lightning Console/acción) sin correlato en backend verificable por REST — InspectionResult__c=4/5 (Serious/Critical) se puede setear y verificar, pero no hay forma de comprobar por REST que un botón/consola de UI aparece');
 
+    // Re-investigado 2026-07-16: se listaron TODOS los Flows de tipo Scheduled del org
+    // (FlowDefinitionView) y ninguno está triggereado sobre WorkOrder — los ~25 encontrados
+    // corren sobre Asset/Quote/Order/Bid/Customer Invoice/Reserve/Speciality. El único candidato
+    // nuevo con nombre prometedor (`Action`/`NonConformity__c`, vía CronTrigger
+    // "NOT_ActionResolutionTerm"/"NOT_ActionAssigned") resultó ser un objeto de No-Conformidades
+    // de auditoría/calidad (Action__c → NonConformity__c), sin relación con WorkOrder ni con
+    // "segunda visita". Sigue sin identificarse ningún mecanismo programado real para esta
+    // regla — no es un batch/Flow con nombre descubrible, candidato a Anonymous Apex si aparece
+    // un lead nuevo.
     it.skip('[e2e] @C595 Verificar que se generan automáticamente las segundas visitas dos días después de un resultado \'Grave\'', async () => {
-      // TODO: implementar — depende de un proceso programado (batch/Flow con schedule) que
-      // reaccione 2 días después de un resultado 'Grave'; no identificado aún cuál CronTrigger de
-      // los ~62 encontrados en el org lo maneja. Candidato a investigar con Anonymous Apex,
-      // similar al grupo de email (ver memoria del proyecto).
+      // TODO: implementar — ver nota del describe; no se encontró ningún Flow programado sobre
+      // WorkOrder en todo el org.
     });
 
   });
