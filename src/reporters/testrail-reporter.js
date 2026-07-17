@@ -243,9 +243,13 @@ class TestRailReporter {
     } catch { /* file not created yet — no summaries logged so far */ }
 
     for (const t of result.testResults) {
+      // Strip everything from the first " — " onward — every it.todo reason (NO AUTOMATIZABLE,
+      // BLOQUEADO POR BUG REAL EN QA, DATOS MAESTROS..., NO CONFIRMADO POR REST, NO EJECUTABLE EN
+      // QA, etc.) follows "<título> — <MOTIVO>: <detalle>", so matching by keyword was missing
+      // titles and leaving them Untested in TestRail instead of Blocked.
       const title  = t.title
         .replace(/^\[e2e\]\s+@C\d+\s+/, '')
-        .replace(/\s+—\s+NO AUTOMATIZABLE.*$/, '');
+        .replace(/\s+—\s+.*$/, '');
       const caseId = CASE_MAP[title];
       if (!caseId) continue;
 
