@@ -512,10 +512,8 @@ describe('Funcional — UAT Base', () => {
 
   });
 
-  describe('Contrato Marco - Doc.', () => {
-    it.todo('[e2e] @C529 Verificar que se puede generar el documento del contrato marco — NO AUTOMATIZABLE VIA REST: la generación de documento usa Conga Composer (integración externa vía NBK_DocumentGenerationController/QuoteURLConga__c), no un proceso interno invocable por REST; además NBK_DocumentGenerationController está IsValid=false en QA desde 2026-04-14');
-
-  });
+  // C529 retirado de este spec y del run de UAT Base (mismo tratamiento que Transaccionales) —
+  // sigue vivo en el suite maestro de TestRail.
 
   describe('Contrato Marco - Aprobación', () => {
     it('[e2e] @C530 Verificar que al cambiar el contrato marco a estado \'Generado\' se lanza el proceso de aprobación correctamente', async () => {
@@ -777,12 +775,8 @@ describe('Funcional — UAT Base', () => {
 
   });
 
-  describe('Oferta comercial - Doc.', () => {
-    it.todo('[e2e] @C539 Verificar que se puede generar el documento de la oferta comercial (Construcción) — NO AUTOMATIZABLE VIA REST: mismo motivo que C529 (Conga Composer + NBK_DocumentGenerationController roto en QA)');
-
-    it.todo('[e2e] @C540 Verificar que se puede generar el documento de la oferta comercial — NO AUTOMATIZABLE VIA REST: mismo motivo que C529 (Conga Composer + NBK_DocumentGenerationController roto en QA)');
-
-  });
+  // C539 y C540 retirados de este spec y del run de UAT Base (mismo tratamiento que C529) —
+  // siguen vivos en el suite maestro de TestRail.
 
   describe('Oferta Comercial - Pedido de compra', () => {
     it.todo('[e2e] @C541 Verificar que se generan correctamente los pedidos de compra al añadir productos de distintos catálogos de compra en la oferta comercial — NO AUTOMATIZABLE VIA REST: la generación de pedidos de compra desde catálogos de proveedor en la oferta comercial pasa por el selector Aura/LWC (NBK_ProductSelectorController.getProductSelectorSupplierProdsWr), el mismo remote-action ya confirmado inalcanzable por REST para el motor de impuestos y para C570/C573');
@@ -2501,35 +2495,8 @@ describe('Funcional — UAT Base', () => {
 
   });
 
-  // BLOCKED (all 9 below), re-confirmed 2026-07-15 via FlowDefinitionView + CronTrigger (Tooling
-  // API/REST): no Flow named after "Enviar documento" or tied to Quote status exists at all (only
-  // record-triggered Flows on unrelated objects — RejectWorkOrderNotification, SI_Quote_KAM_Assignment,
-  // WaybillNotification, Service_Appointment_Send_Custom_Notification — none matching these 9
-  // business events). The time-relative ones (2 days before/after a cita, 48h after an OT, 24h/7
-  // days around an invoice, 6 months before inspection) are all Scheduled-Path Flows with their own
-  // fixed CronTrigger (confirmed real jobs: NOT_InvoiceNotGenerated-10, NOT_Framework_Contract_Expiration-4,
-  // NOT_LimitDateTechnicalQuote-6/7days/15days — next fire times are that day's batch window, not
-  // something a REST field update can force early). No direct field update triggers any of these
-  // sends, and there's no queryable "email sent" log object to assert against even if one fired.
-  describe('Transaccionales', () => {
-    it.todo('[e2e] @C632 Verificar que se envía el transaccional al prescriptor al cambiar la oferta comercial a \'Enviar documento\' — NO AUTOMATIZABLE VIA REST: no existe ningún Flow ligado a Quote/status con ese nombre o criterio (confirmado vía FlowDefinitionView)');
-
-    it.todo('[e2e] @C633 Verificar que se envía el transaccional al técnico interno 2 días antes de la cita programada — NO AUTOMATIZABLE VIA REST: depende de un Scheduled Path Flow con CronTrigger propio (ventana de batch fija), no de una actualización de campo vía REST');
-
-    it.todo('[e2e] @C634 Verificar que se envía el transaccional al titular y al prescriptor 2 días antes de la cita programada — NO AUTOMATIZABLE VIA REST: mismo mecanismo que C633');
-
-    it.todo('[e2e] @C635 Verificar que se envía el transaccional al técnico interno cuando quedan menos de 2 días para la cita — NO AUTOMATIZABLE VIA REST: mismo mecanismo que C633');
-
-    it.todo('[e2e] @C636 Verificar que se envía el transaccional al titular y al prescriptor cuando quedan menos de 2 días para la cita — NO AUTOMATIZABLE VIA REST: mismo mecanismo que C633');
-
-    it.todo('[e2e] @C637 Verificar que se envía el informe al cliente 48 horas después de finalizar la OT — NO AUTOMATIZABLE VIA REST: Scheduled Path Flow con CronTrigger propio, sin objeto de log de envío consultable');
-
-    it.todo('[e2e] @C638 Verificar que se envía el transaccional al contacto responsable de pago 24 horas después de emitir la factura — NO AUTOMATIZABLE VIA REST: mismo mecanismo (CronTrigger NOT_InvoiceNotGenerated confirmado real)');
-
-    it.todo('[e2e] @C639 Verificar que se envía el transaccional al contacto responsable de pago 7 días después de vencer una factura impagada — NO AUTOMATIZABLE VIA REST: mismo mecanismo, CronTrigger de facturas propio');
-
-    it.todo('[e2e] @C640 Verificar que se envía el transaccional al titular y al prescriptor 6 meses antes de la próxima inspección — NO AUTOMATIZABLE VIA REST: mismo mecanismo, CronTrigger NOT_Framework_Contract_Expiration confirmado real');
-
-  });
+  // Grupo "Transaccionales" (C632-C640) retirado de este spec y del run de UAT Base: dependen de
+  // Marketing Cloud (fuera del alcance de este testplan), no de un mecanismo interno de Salesforce.
+  // Los casos siguen vivos en el suite maestro de TestRail, solo se excluyeron de este run.
 
 });

@@ -34,7 +34,7 @@ const CASE_MAP = {
   'Verificar que se puede crear una cuenta de tipo Delegación': 526,
   'Verificar que al crear una oportunidad se genera correctamente el contrato marco relacionado con sus campos autocompletados': 527,
   'Verificar que se pueden configurar en el contrato marco varios productos repetidos, tanto principales como complementos': 528,
-  'Verificar que se puede generar el documento del contrato marco': 529,
+  // C529 retirado del run: ver comentario en uatBase.spec.ts
   "Verificar que al cambiar el contrato marco a estado 'Generado' se lanza el proceso de aprobación correctamente": 530,
   'Verificar que al aceptar el contrato marco el aprobador, su estado cambia correctamente': 531,
   'Verificar que al rechazar el contrato marco el aprobador, su estado cambia correctamente': 532,
@@ -44,8 +44,7 @@ const CASE_MAP = {
   'Verificar que se puede versionar un contrato marco': 536,
   'Verificar que se puede crear una oferta comercial con impuestos no exentos y sus campos se autocompletan correctamente': 537,
   'Verificar que al configurar la oferta comercial se asignan correctamente los impuestos según el activo vinculado a cada línea': 538,
-  'Verificar que se puede generar el documento de la oferta comercial (Construcción)': 539,
-  'Verificar que se puede generar el documento de la oferta comercial': 540,
+  // C539 y C540 retirados del run: ver comentario en uatBase.spec.ts
   'Verificar que se generan correctamente los pedidos de compra al añadir productos de distintos catálogos de compra en la oferta comercial': 541,
   "Verificar que al cambiar la oferta comercial a estado 'Generado' se lanza el proceso de aprobación según las condiciones de precio o descuento": 542,
   'Verificar que la oferta comercial se asigna automáticamente al aprobador correspondiente según el precio total o el descuento máximo': 543,
@@ -137,15 +136,7 @@ const CASE_MAP = {
   'Verificar que se pueden crear recursos de servicio con sus skills correspondientes': 629,
   'Verificar que se pueden crear activos de tipo equipo vinculados a magnitudes y CVM': 630,
   'Verificar que se pueden crear informes de desviación, no conformidades y acciones preventivas o correctivas': 631,
-  "Verificar que se envía el transaccional al prescriptor al cambiar la oferta comercial a 'Enviar documento'": 632,
-  'Verificar que se envía el transaccional al técnico interno 2 días antes de la cita programada': 633,
-  'Verificar que se envía el transaccional al titular y al prescriptor 2 días antes de la cita programada': 634,
-  'Verificar que se envía el transaccional al técnico interno cuando quedan menos de 2 días para la cita': 635,
-  'Verificar que se envía el transaccional al titular y al prescriptor cuando quedan menos de 2 días para la cita': 636,
-  'Verificar que se envía el informe al cliente 48 horas después de finalizar la OT': 637,
-  'Verificar que se envía el transaccional al contacto responsable de pago 24 horas después de emitir la factura': 638,
-  'Verificar que se envía el transaccional al contacto responsable de pago 7 días después de vencer una factura impagada': 639,
-  'Verificar que se envía el transaccional al titular y al prescriptor 6 meses antes de la próxima inspección': 640,
+  // C632-C640 ("Transaccionales") retirados del run: dependen de Marketing Cloud, fuera de alcance.
 };
 
 // TestRail default status IDs: 1 Passed, 2 Blocked, 3 Untested, 4 Retest, 5 Failed.
