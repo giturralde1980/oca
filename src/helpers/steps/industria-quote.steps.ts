@@ -5,11 +5,12 @@ import { buildQuoteIndustria }        from '../fixtures/quote.industria.fixture'
 import { TestReport }                 from '../report.helper';
 import { patchOrderActivity, queryOrderByQuoteId } from './order.steps';
 import { sfQuery }                    from '../salesforce-query.helper';
+import { getIndustriaAccountRefs }    from '../../config/industria-account';
 import pactum from 'pactum';
 
-// TAIKA account (001JW000007t8vWYAQ) — assets owned by this account keep the SA's
-// titularId as TAIKA, which has the delegacionId mapping in Mobility.
-const TAIKA_ACCOUNT_ID = '001JW000007t8vWYAQ';
+// Cuenta de Industria (TAIKA por defecto, o la generada por setup-industria-account.ts si
+// existe para este entorno) — sus assets mantienen el titularId de la SA con el mapeo de
+// delegacionId en Mobility.
 
 /**
  * Returns the first TAIKA-owned asset that is not currently blocked by a Dispatched
@@ -21,10 +22,12 @@ const TAIKA_ACCOUNT_ID = '001JW000007t8vWYAQ';
  *   2. Get TAIKA assets not in that exclusion set.
  */
 export async function queryAvailableIndustriaAsset(): Promise<string> {
-  // Get TAIKA assets with all required address fields filled (validation rule rejects dispatch otherwise)
+  const { accountId } = getIndustriaAccountRefs();
+
+  // Get assets with all required address fields filled (validation rule rejects dispatch otherwise)
   const candidates = await sfQuery.query<{ Id: string }>(
     `SELECT Id FROM Asset
-     WHERE AccountId = '${TAIKA_ACCOUNT_ID}'
+     WHERE AccountId = '${accountId}'
        AND CAERequired__c != null
        AND Address__c  != null
        AND City__c     != null

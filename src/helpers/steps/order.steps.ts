@@ -3,7 +3,7 @@ import { sfQuery } from '../salesforce-query.helper';
 import { updateRecord } from '../salesforce-crud.helper';
 import { TestReport } from '../report.helper';
 
-const TECHNICIAN_ID = '0Hn09000000ENzICAW';
+const TECHNICIAN_ID = '0HnJW000000xvQT0AY'; // German Iturralde
 
 export async function patchOrderActivity(
   orderId:     string,
@@ -243,6 +243,7 @@ export async function scheduleServiceAppointment(
   const schedEndTime   = end.toISOString();
 
   await updateRecord('ServiceAppointment', saId, {
+    Status:                        'Scheduled',
     SchedStartTime:                schedStartTime,
     SchedEndTime:                  schedEndTime,
     AssignedInternalTechnician__c: TECHNICIAN_ID,
@@ -253,12 +254,43 @@ export async function scheduleServiceAppointment(
     'Programar ServiceAppointment',
     {
       'SA Id':                          saId,
+      'Status':                         'Scheduled',
       'SchedStartTime':                 schedStartTime,
       'SchedEndTime':                   schedEndTime,
       'AssignedInternalTechnician__c':  TECHNICIAN_ID,
     },
     'ok',
   );
+
+  // AssignedInternalTechnician__c es un campo custom — no crea la asignación real de Field
+  // Service. El AssignedResource (objeto estándar ServiceAppointmentId+ServiceResourceId) es
+  // lo que el motor de despacho/Gantt de FSL realmente lee, así que se crea aparte con el mismo técnico.
+  // NBK_AssignedResourceTrigger (afterInsert) actualiza la WorkOrder relacionada — la misma que
+  // el updateRecord de arriba acaba de tocar — y puede chocar con "unable to obtain exclusive
+  // access to this record" (row lock de Salesforce) si el insert llega antes de que esa
+  // transacción libere el lock. Reproduce incluso en una corrida sola, no es solo por paralelismo.
+  // Reintenta con backoff, que es la recomendación estándar de Salesforce para este error.
+  let assignedResource: string | undefined;
+  const maxAttempts = 5;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      assignedResource = await pactum.spec()
+        .post('/sobjects/AssignedResource/')
+        .withBody({ ServiceAppointmentId: saId, ServiceResourceId: TECHNICIAN_ID })
+        .expectStatus(201)
+        .returns('id') as string;
+      break;
+    } catch (e) {
+      const message = (e as Error).message;
+      const isLockContention = message.includes('unable to obtain exclusive access');
+      if (!isLockContention || attempt === maxAttempts) throw e;
+      const delayMs = attempt * 2000;
+      console.log(`[AssignedResource] lock contention, reintento ${attempt}/${maxAttempts} en ${delayMs}ms`);
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+  report.step('Crear AssignedResource', { 'SA Id': saId, 'ServiceResourceId': TECHNICIAN_ID, 'AssignedResource Id': assignedResource! }, 'ok');
+
   return { schedStartTime, schedEndTime };
 }
 

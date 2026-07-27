@@ -63,6 +63,7 @@ describe('Funcional — Quotes Industria', () => {
       console.log(`[e2e] SA Id:        ${sa.Id}  (Status: ${sa.Status})`);
 
       await scheduleServiceAppointment(sa.Id, report);
+
       await assignTechnicianToWorkOrder(workOrderId!, report, assetId);
       await dispatchServiceAppointment(sa.Id, report);
 
