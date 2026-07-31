@@ -95,6 +95,41 @@ export async function verifyOrderSyncedToSAP(
   throw new Error(`Order for Quote ${quoteId} SAP sync did not complete within ${timeoutMs}ms`);
 }
 
+/**
+ * Polls an OrderItem until OrderSAPId__c is populated — the actual precondition
+ * NBK_WorkOrderTriggerHelper.processNonZobrAutoWaybillForFinishedWorkOrders checks before
+ * auto-waybilling a finished WorkOrder's line. Order.SAPOrderNumber__c syncing doesn't guarantee
+ * this is set yet on the line itself, so it's polled separately rather than assumed alongside
+ * verifyOrderSyncedByOrderId.
+ */
+export async function verifyOrderItemSyncedToSAP(
+  orderItemId: string,
+  { initialDelayMs = 15000, intervalMs = 10000, timeoutMs = 90000 }: { initialDelayMs?: number; intervalMs?: number; timeoutMs?: number } = {},
+): Promise<string> {
+  if (initialDelayMs > 0) await new Promise(r => setTimeout(r, initialDelayMs));
+
+  const start    = Date.now();
+  const deadline = start + timeoutMs;
+  let attempts   = 0;
+
+  while (Date.now() < deadline) {
+    attempts++;
+    const [item] = await sfQuery.query<{ OrderSAPId__c: string | null }>(
+      `SELECT OrderSAPId__c FROM OrderItem WHERE Id = '${orderItemId}'`
+    );
+    console.log(`[SAP sync OrderItem] attempt ${attempts} — OrderSAPId__c: ${item?.OrderSAPId__c}`);
+
+    if (item?.OrderSAPId__c) {
+      console.log(`[SAP sync OrderItem] confirmed after ${attempts} attempt(s) in ${((Date.now() - start) / 1000).toFixed(1)}s (+ ${initialDelayMs / 1000}s initial wait)`);
+      return item.OrderSAPId__c;
+    }
+
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+
+  throw new Error(`OrderItem ${orderItemId} OrderSAPId__c did not populate within ${timeoutMs}ms`);
+}
+
 /** Polls an Order directly by its Id until SAP sync is confirmed. */
 export async function verifyOrderSyncedByOrderId(
   orderId: string,

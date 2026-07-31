@@ -4,14 +4,14 @@
       "opp": {
         "recordTypeId": "012Qu0000007sLWIAY",
         "contactId": "003Qu00000j5GgXIAU",
-        "delegationId": "00109000019KneHAAS",
+        "delegationId": "00109000019KndwAAC",
         "section": "AC"
       },
       "quote": {
         "recordTypeId": "01209000000iw4VAAQ",
         "pricebook2Id": "01s0900000IoUTsAAN",
         "contactId": "003Qu00000j5GgXIAU",
-        "delegationId": "00109000019KneHAAS",
+        "delegationId": "00109000019KndwAAC",
         "society": "7010",
         "orderType": "ZSER",
         "billingProfileId": "a1XQu00000GV7qPMAT",

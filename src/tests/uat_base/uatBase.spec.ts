@@ -1580,7 +1580,25 @@ describe('Funcional — UAT Base', () => {
     // SAP. Un Pedido RG/ZSER recién ganado con setupRGQuote/winRGQuoteAndGetOrder falla esa
     // sincronización: "error - ZSF_SALES/006: El centro de beneficio CK1700 no existe en SAP" —
     // un problema de datos maestros de SAP en este entorno QA, no de la automatización en sí.
-    it.todo('[e2e] @C580 Verificar que al finalizar una OT se albarana automáticamente la línea de pedido — BLOQUEADO POR DATOS MAESTROS SAP: mecanismo real identificado (NBK_WorkOrderTriggerHelper.processNonZobrAutoWaybillForFinishedWorkOrders exige OrderItem.OrderSAPId__c no vacío), pero el Pedido RG/ZSER no sincroniza con SAP en este entorno ("ZSF_SALES/006: El centro de beneficio CK1700 no existe en SAP") — confirmado también vía el análisis de Integration Requests del 2026-07-15 en C560/567-569/576');
+    // Investigado en uat (2026-07-31): el mecanismo automático SÍ es alcanzable aquí (a diferencia
+    // de QA, donde el Pedido RG/ZSER nunca sincronizaba). Se implementó el test real (ver historial
+    // de git — usa verifyOrderItemSyncedToSAP para esperar OrderItem.OrderSAPId__c ANTES de
+    // finalizar la OT, sin tocar Waybilled__c manualmente) y se corrió 3 veces contra pedidos
+    // RG/ZSER recién creados con setupRGQuote/winRGQuoteAndGetOrder, MISMO Asset/PricebookEntry/
+    // Activity en los 3 casos:
+    //   intento 1 (delegation org-refs original): "El centro de beneficio CK1200 no existe en SAP"
+    //   intento 2 (repetido, mismos datos):        mismo error, CK1200 — confirma que NO es azar
+    //   intento 3 (cambiando a Delegation__c=DEFAULT, la misma que usa la cuenta Industria synced):
+    //             "El centro de beneficio CK2800 no existe en SAP"
+    // Se encontró un Pedido real en uat (mismo Asset+PricebookEntry+Activity+Delegation exactos)
+    // cuya línea SÍ sincronizó, con ProfitCenter "CK28006100" — o sea, la combinación correcta
+    // existe en algún lado, pero no se pudo reproducir determinísticamente variando solo la
+    // Delegación. Esto es un problema de completitud de maestros de Centro de Beneficio en SAP
+    // (varios códigos distintos faltantes, no uno solo), no del mecanismo Salesforce ni del test.
+    // El fix de Delegation__c (org-refs.json RG.INS → la Delegación DEFAULT) se mantiene porque es
+    // una mejora real (CK1200 confirmado inexistente; la nueva delegación al menos coincide con la
+    // que ya usa la cuenta Industria funcionando) y no rompió C569 (regresión verificada, sigue OK).
+    it.todo('[e2e] @C580 Verificar que al finalizar una OT se albarana automáticamente la línea de pedido — BLOQUEADO POR MAESTROS SAP EN UAT (no en QA): mecanismo confirmado alcanzable (helper verifyOrderItemSyncedToSAP implementado y funcionando), pero el Pedido RG/ZSER no consigue un Profit Center válido de forma reproducible (probado con 2 Delegaciones distintas: "CK1200" y "CK2800" no existen en SAP, aunque SÍ existe un Pedido real con Profit Center "CK28006100" para la misma combinación Asset/Pricebook/Activity/Delegación) — requiere que el equipo de SAP complete los maestros de Centro de Beneficio en uat, no una corrección de datos de test');
 
     it('[e2e] @C583 Verificar que al finalizar una OT se puede albaranar manualmente la línea de pedido', async () => {
       const report = new TestReport('C583 — Finalizar la OT y albaranar manualmente la línea de pedido');
