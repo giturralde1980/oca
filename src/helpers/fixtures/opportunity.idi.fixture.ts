@@ -1,12 +1,12 @@
 import { faker } from '@faker-js/faker';
 import { OpportunityFixture } from './opportunity.fixture';
+import { getTestData } from '../../config/testdata';
 
-export const OPP_IDI_REFS = {
-  RECORD_TYPE:  '012JW000000BzmcYAC',
-  ACCOUNT_ID:   '001JW000007t8vWYAQ',
-  CONTACT_ID:   '003JW00001BwMe1YAF',
-  DELEGATION:   '001JW00000sULUXYA4',
-};
+interface OpportunityTestData {
+  idi: { RECORD_TYPE: string; ACCOUNT_ID: string; CONTACT_ID: string; DELEGATION: string };
+}
+
+export const OPP_IDI_REFS = getTestData<OpportunityTestData>('opportunity').idi;
 
 export function buildOpportunityIDI(
   overrides: Partial<OpportunityFixture> = {},

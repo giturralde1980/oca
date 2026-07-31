@@ -201,7 +201,7 @@ class TestRailReporter {
       // so every execution stays linked to https://oca.testrail.io/index.php?/plans/view/113
       const entry = await trRequest('POST', `add_plan_entry/${TESTRAIL_PLAN_ID}`, {
         suite_id:    TESTRAIL_SUITE_ID,
-        name:        `UAT Salesforce QA — ${env.toUpperCase()} — ${date}`,
+        name:        `UAT Base — ${env.toUpperCase()} — ${date}`,
         description: `Ejecución automática — ${new Date().toISOString()}`,
         case_ids:    Object.values(CASE_MAP),
         include_all: false,

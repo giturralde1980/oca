@@ -1,0 +1,74 @@
+{
+  "TECHNICIAN_ID": "0HnJW000000xvQT0AY",
+  "FRAMEWORK_CONTRACT_RECORD_TYPE": "01209000000iw4WAAQ",
+  "PURCHASE_ORDER_RECORD_TYPE": "01209000000iw4TAAQ",
+  "SUPPLIER_ACCOUNT_ID": "001JW00000Vs2OQYAZ",
+  "SUPPLIER_ACCOUNT_ID_2": "001JW000008A5mpYAC",
+  "PURCHASE_ORDER_DELEGATION": "001JW000007SxPjYAK",
+  "PURCHASE_ORDER_PRICEBOOK_ID": "01s0900000IoUU2AAN",
+  "MA_ACTIVE_COMMERCIAL_USER_ID": "005JW00000hAFEjYAO",
+  "SOURCE_QUOTE_ID": {
+    "industria": "0Q0JW0000083YJt0AM",
+    "certificacion": "0Q0JW000008SWZp0AO",
+    "formacion": "0Q0JW000008XWUL0A4"
+  },
+  "SETUP_INDUSTRIA_ACCOUNT": {
+    "CONTACT_RECORD_TYPE": "01209000000iyAnAAI",
+    "ASSET_RECORD_TYPE_INSTALACION": "01209000000iw9aAAA",
+    "COMMERCIAL_ID": "0050900000AeA5iAAF",
+    "DELEGATION_ID": "001JW000008jdR4YAI",
+    "ACCOUNT_DIVISION": "FORM",
+    "ASSET_RECIPES": [
+      {
+        "insert": {
+          "Address__c": "Centro de Instalación 1",
+          "StreetNumber__c": "1",
+          "PostalCode__c": "01012",
+          "Activity__c": "6100",
+          "Subactivity__c": "6101",
+          "Actividad_LN__c": "6100_1",
+          "AddressType__c": "343",
+          "BusinessLine__c": "RG",
+          "Division__c": "INS",
+          "UtmX__c": "429763,711",
+          "UtmY__c": "4811874,425",
+          "ConsequenceOfFailure": "Insignificante"
+        },
+        "post": {
+          "City__c": "a0QJW000006iNBw2AM",
+          "Municipality__c": "a0QJW0000071MCI2A2",
+          "Country__c": "a0QJW000006hyof2AA",
+          "Province__c": "a0QJW000006hvPi2AI",
+          "Region__c": "a0QJW000006hz6e2AA",
+          "Coordinates__Latitude__s": 42.8467,
+          "Coordinates__Longitude__s": -2.6716
+        }
+      },
+      {
+        "insert": {
+          "Address__c": "Centro de Instalación 2",
+          "StreetNumber__c": "1",
+          "PostalCode__c": "31251",
+          "Activity__c": "6300",
+          "Subactivity__c": "6301",
+          "Actividad_LN__c": "6300_1",
+          "AddressType__c": "343",
+          "BusinessLine__c": "RG",
+          "Division__c": "INS",
+          "UtmX__c": "423360,686",
+          "UtmY__c": "4593463,262",
+          "ConsequenceOfFailure": "Insignificante"
+        },
+        "post": {
+          "City__c": "a0QJW000007pvMo2AI",
+          "Municipality__c": "a0QJW000006i01A2AQ",
+          "Country__c": "a0QJW000006hyof2AA",
+          "Province__c": "a0QJW000006hvQC2AY",
+          "Region__c": "a0QJW000006hz6V2AQ",
+          "Coordinates__Latitude__s": 42.8125,
+          "Coordinates__Longitude__s": -1.6458
+        }
+      }
+    ]
+  }
+}

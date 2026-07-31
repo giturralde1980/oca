@@ -24,18 +24,20 @@ import pactum from 'pactum';
 export async function queryAvailableIndustriaAsset(): Promise<string> {
   const { accountId } = getIndustriaAccountRefs();
 
-  // Get assets with all required address fields filled (validation rule rejects dispatch otherwise)
+  // Get assets with all required address fields filled (validation rule rejects dispatch otherwise).
+  // City__c is intentionally always null on Instalación assets (NBK_AssetTriggerHelper clears it
+  // and uses Municipality__c instead) — checking City__c here would never match.
   const candidates = await sfQuery.query<{ Id: string }>(
     `SELECT Id FROM Asset
      WHERE AccountId = '${accountId}'
        AND CAERequired__c != null
        AND Address__c  != null
-       AND City__c     != null
+       AND Municipality__c != null
        AND PostalCode__c != null
        AND Country__c  != null
        AND Province__c != null`,
   );
-  if (candidates.length === 0) throw new Error('No TAIKA assets with CAERequired__c found');
+  if (candidates.length === 0) throw new Error('No available Industria assets with required address fields found');
 
   const candidateIds = candidates.map(a => `'${a.Id}'`).join(',');
 

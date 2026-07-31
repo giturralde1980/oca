@@ -22,7 +22,7 @@ on:
         required: true
         default: 'qa'
         type: choice
-        options: [qa, int, stg, prd]
+        options: [qa, int, uat, prd]
       test_pattern:
         description: 'Patrón Jest (ej: quotes/, quotes/industria)'
         required: false

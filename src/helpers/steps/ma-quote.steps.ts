@@ -4,7 +4,10 @@ import { changeQuoteStatus } from './quote-common.steps';
 import { updateRecord } from '../salesforce-crud.helper';
 import { queryOrderByQuoteId } from './order.steps';
 import { getOrgRefs } from '../../config/org-refs';
+import { getTestData } from '../../config/testdata';
 import { TestReport } from '../report.helper';
+
+interface StepsTestData { MA_ACTIVE_COMMERCIAL_USER_ID: string }
 
 // MA/INS (Medio Ambiente) uses OrderType=ZOBR and its accredited-inspection product
 // (PricebookEntry already curated in org-refs.ts) is a "paquete" that expands into several
@@ -19,7 +22,7 @@ import { TestReport } from '../report.helper';
 //     for MA_INS is inactive in this org; must override with an active User.
 // org-refs.ts's MA_INS.shared.assignedCommercialId points to an inactive User in this org —
 // the "sales representative assigned to the budget is inactive" validation rejects it.
-export const ACTIVE_COMMERCIAL_USER_ID = '005JW00000hAFEjYAO';
+export const ACTIVE_COMMERCIAL_USER_ID = getTestData<StepsTestData>('steps').MA_ACTIVE_COMMERCIAL_USER_ID;
 
 export interface MAQuoteSetup {
   oppId:      string;

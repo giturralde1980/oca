@@ -1,6 +1,6 @@
 import { sfQuery }    from '../salesforce-query.helper';
 import { updateRecord } from '../salesforce-crud.helper';
-import { getQuote, updateQuoteStatus } from './quote.steps';
+import { getQuote } from './quote.steps';
 import { TestReport }  from '../report.helper';
 
 export interface SourceLineItem {
@@ -48,7 +48,10 @@ export async function changeQuoteStatus(
   cancellationReason  = 'TODO_CANCELLATION_REASON',
 ): Promise<void> {
   if (status === 'Generada') {
-    await updateQuoteStatus(quoteId, status);
+    // FlowBypassVR__c: DTT_RGL_2a_Visita_Obligatorio requires "Precio neto 2a visita" or
+    // "Descuento 2a visita" for BusinessLine=RG Quotes reaching Generada — not relevant to what
+    // these tests exercise, same bypass pattern already used below for Rechazada/Cancelada.
+    await updateRecord('Quote', quoteId, { Status: status, FlowBypassVR__c: true });
   } else if (status === 'Rechazada') {
     await updateRecord('Quote', quoteId, { Status: status, RejectionReason__c: rejectionReason, FlowBypassVR__c: true });
     report.step(`Cambiar estado Quote → ${status}`, { 'Quote Id': quoteId, 'Status': status, 'RejectionReason__c': rejectionReason });

@@ -10,8 +10,11 @@ import {
   assertIntegrationSuccess,
   SourceLineItem,
 } from '../../../../helpers/steps/industria-quote.steps';
+import { getTestData } from '../../../../config/testdata';
 
-const SOURCE_QUOTE_ID = '0Q0JW0000083YJt0AM';
+interface StepsTestData { SOURCE_QUOTE_ID: { industria: string } }
+
+const SOURCE_QUOTE_ID = getTestData<StepsTestData>('steps').SOURCE_QUOTE_ID.industria;
 
 describe('Funcional — Quotes Industria', () => {
   let suite:    SuiteReport;

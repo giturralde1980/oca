@@ -1,11 +1,11 @@
 import { faker } from '@faker-js/faker';
+import { getTestData } from '../../config/testdata';
 
-export const OPP_REFS = {
-  ACCOUNT_ID:    '001JW000007t8vWYAQ',
-  RECORD_TYPE:   '012JW000000BzmcYAC',
-  DELEGATION:    '001JW000007SxQ7YAK',
-  CONTACT_ID:    '003JW000012ubJYYAY',
-};
+interface OpportunityTestData {
+  base: { ACCOUNT_ID: string; RECORD_TYPE: string; DELEGATION: string; CONTACT_ID: string };
+}
+
+export const OPP_REFS = getTestData<OpportunityTestData>('opportunity').base;
 
 export interface OpportunityFixture {
   Name:           string;

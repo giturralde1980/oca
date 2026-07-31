@@ -5,7 +5,7 @@
   "scripts": {
     "test:int": "cross-env TEST_ENV=int jest --config jest.config.ts",
     "test:qa":  "cross-env TEST_ENV=qa  jest --config jest.config.ts",
-    "test:stg": "cross-env TEST_ENV=stg jest --config jest.config.ts",
+    "test:uat": "cross-env TEST_ENV=uat jest --config jest.config.ts",
     "test:prd": "cross-env TEST_ENV=prd jest --config jest.config.ts",
 
     "test:qa:uat": "cross-env TEST_ENV=qa jest --config jest.config.ts --testPathPatterns uat_base",
@@ -13,12 +13,12 @@
 "find-test-data":     "node node_modules/ts-node/dist/bin.js src/scripts/find-test-data.ts qa",
     "find-test-data:int": "node node_modules/ts-node/dist/bin.js src/scripts/find-test-data.ts int",
     "find-test-data:qa":  "node node_modules/ts-node/dist/bin.js src/scripts/find-test-data.ts qa",
-    "find-test-data:stg": "node node_modules/ts-node/dist/bin.js src/scripts/find-test-data.ts stg",
+    "find-test-data:uat": "node node_modules/ts-node/dist/bin.js src/scripts/find-test-data.ts uat",
     "find-test-data:prd": "node node_modules/ts-node/dist/bin.js src/scripts/find-test-data.ts prd",
 
     "setup:industria-account:int": "cross-env TEST_ENV=int DOTENV_CONFIG_PATH=.env.int node -r dotenv/config node_modules/ts-node/dist/bin.js src/scripts/setup-industria-account.ts",
     "setup:industria-account:qa":  "cross-env TEST_ENV=qa  DOTENV_CONFIG_PATH=.env.qa  node -r dotenv/config node_modules/ts-node/dist/bin.js src/scripts/setup-industria-account.ts",
-    "setup:industria-account:stg": "cross-env TEST_ENV=stg DOTENV_CONFIG_PATH=.env.stg node -r dotenv/config node_modules/ts-node/dist/bin.js src/scripts/setup-industria-account.ts",
+    "setup:industria-account:uat": "cross-env TEST_ENV=uat DOTENV_CONFIG_PATH=.env.uat node -r dotenv/config node_modules/ts-node/dist/bin.js src/scripts/setup-industria-account.ts",
     "setup:industria-account:prd": "cross-env TEST_ENV=prd DOTENV_CONFIG_PATH=.env.prd node -r dotenv/config node_modules/ts-node/dist/bin.js src/scripts/setup-industria-account.ts"
   },
   "keywords": [],

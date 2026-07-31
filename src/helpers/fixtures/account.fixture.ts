@@ -1,16 +1,18 @@
 import { faker } from '@faker-js/faker';
 import { generateCIF } from './lead.fixture';
+import { getTestData } from '../../config/testdata';
 
-export const ACCOUNT_RECORD_TYPES = {
-  BUSINESS:    '01209000000ivaNAAQ', // RT DeveloperName = 'Client' (Cliente)
-  EXPLOTACION: '01209000000ivaMAAQ', // RT DeveloperName = 'Area' (Explotación)
-  DELEGACION:  '01209000000ivaOAAQ', // RT DeveloperName = 'Delegation' (Delegación)
-  PROVEEDOR:   '01209000000ivaPAAQ', // RT DeveloperName = 'Supplier' (Proveedor)
-};
+interface AccountTestData {
+  ACCOUNT_RECORD_TYPES: { BUSINESS: string; EXPLOTACION: string; DELEGACION: string; PROVEEDOR: string };
+  DELEGATIONS: { DEFAULT: string };
+  DIVISION_DEFAULT: string;
+  SOCIETY_DEFAULT: string;
+}
 
-export const DELEGATIONS = {
-  DEFAULT: '001JW00000sULUXYA4',
-};
+const data = getTestData<AccountTestData>('account');
+
+export const ACCOUNT_RECORD_TYPES = data.ACCOUNT_RECORD_TYPES;
+export const DELEGATIONS = data.DELEGATIONS;
 
 const REAL_ADDRESSES = [
   { BillingStreet: 'Calle Gran Vía 28',               BillingCity: 'Madrid',    BillingState: 'Madrid',    BillingPostalCode: '28013', BillingCountry: 'Spain' },
@@ -52,8 +54,8 @@ export function buildAccount(overrides: Partial<AccountFixture> = {}): AccountFi
     CIF__c:                  generateCIF(),
     RecordTypeId:            ACCOUNT_RECORD_TYPES.BUSINESS,
     Delegation__c:           DELEGATIONS.DEFAULT,
-    Division__c:             'PE - Servicios Técnicos',
-    Society__c:              '1200',
+    Division__c:             data.DIVISION_DEFAULT,
+    Society__c:              data.SOCIETY_DEFAULT,
     AccountSource:           'Email',
     InvoiceMail__c:          `${faker.string.alphanumeric(10).toLowerCase()}@qa-automation.com`,
     EqualToContactAddres__c: true,

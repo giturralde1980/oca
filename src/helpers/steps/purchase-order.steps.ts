@@ -1,5 +1,15 @@
 import pactum from 'pactum';
 import { TestReport } from '../report.helper';
+import { getTestData } from '../../config/testdata';
+
+interface StepsTestData {
+  PURCHASE_ORDER_RECORD_TYPE:  string;
+  SUPPLIER_ACCOUNT_ID:         string;
+  SUPPLIER_ACCOUNT_ID_2:       string;
+  PURCHASE_ORDER_DELEGATION:   string;
+  PURCHASE_ORDER_PRICEBOOK_ID: string;
+}
+const stepsData = getTestData<StepsTestData>('steps');
 
 // "Pedido de Compra" (Purchase Order) is an Order record with RecordTypeId = Purchase_Order.
 // The wizard UI ("selector de pedido de venta", C573) goes through the same Aura-only
@@ -10,13 +20,13 @@ import { TestReport } from '../report.helper';
 // OrderItem.PurchaseOrderLineNumber__c — despite the label ("Purchase order line number") and
 // being a plain Text(255) field (not a formal Lookup), it stores the Sales-Order OrderItem's Id
 // as text (confirmed against real production-like PO records in QA).
-export const PURCHASE_ORDER_RECORD_TYPE = '01209000000iw4TAAQ';
+export const PURCHASE_ORDER_RECORD_TYPE = stepsData.PURCHASE_ORDER_RECORD_TYPE;
 
 // Real, already-synced Supplier accounts (RecordType 'Supplier', 01209000000ivaPAAQ) — creating a
 // *new* Supplier account is a separate, currently-blocked concern (see C523's note on SAP/CVI
 // field mapping); Purchase Order tests only need an existing one to point SupplierAccount__c at.
-export const SUPPLIER_ACCOUNT_ID = '001JW00000Vs2OQYAZ';
-export const SUPPLIER_ACCOUNT_ID_2 = '001JW000008A5mpYAC';
+export const SUPPLIER_ACCOUNT_ID = stepsData.SUPPLIER_ACCOUNT_ID;
+export const SUPPLIER_ACCOUNT_ID_2 = stepsData.SUPPLIER_ACCOUNT_ID_2;
 
 export interface PurchaseOrderSetup {
   purchaseOrderId: string;
@@ -43,10 +53,10 @@ export async function createPurchaseOrder(
       EffectiveDate:      new Date().toISOString().slice(0, 10),
       Society__c:         '7010',
       TaxGroup__c:        'ZMWS-3',
-      Delegation__c:      '001JW000007SxPjYAK',
+      Delegation__c:      stepsData.PURCHASE_ORDER_DELEGATION,
       Division__c:        'INS',
       BusinessLine__c:    'RG',
-      Pricebook2Id:       '01s0900000IoUU2AAN',
+      Pricebook2Id:       stepsData.PURCHASE_ORDER_PRICEBOOK_ID,
     })
     .expectStatus(201)
     .returns('id') as string;

@@ -1,11 +1,11 @@
 import { buildQuote, QuoteFixture } from './quote.fixture';
 import { getIndustriaAccountRefs } from '../../config/industria-account';
+import { getTestData } from '../../config/testdata';
 
-export const QUOTE_INDUSTRIA_REFS = {
-  PRICEBOOK_ID:           '01s0900000IoUTsAAN',
-  DELEGATION:             '001JW000007SxPKYA0',
-  ASSIGNED_COMMERCIAL:    '005Qu0000002BiXIAU',
-};
+interface QuoteIndustriaRefs { PRICEBOOK_ID: string; DELEGATION: string; ASSIGNED_COMMERCIAL: string }
+interface QuoteTestData { industria: QuoteIndustriaRefs }
+
+export const QUOTE_INDUSTRIA_REFS = getTestData<QuoteTestData>('quote').industria;
 
 export function buildQuoteIndustria(
   opportunityId: string | null,

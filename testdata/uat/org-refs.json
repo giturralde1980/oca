@@ -1,0 +1,162 @@
+{
+  "RG": {
+    "INS": {
+      "opp": {
+        "recordTypeId": "012Qu0000007sLWIAY",
+        "contactId": "003Qu00000j5GgXIAU",
+        "delegationId": "00109000019KneHAAS",
+        "section": "AC"
+      },
+      "quote": {
+        "recordTypeId": "01209000000iw4VAAQ",
+        "pricebook2Id": "01s0900000IoUTsAAN",
+        "contactId": "003Qu00000j5GgXIAU",
+        "delegationId": "00109000019KneHAAS",
+        "society": "7010",
+        "orderType": "ZSER",
+        "billingProfileId": "a1XQu00000GV7qPMAT",
+        "paymentResponsibleId": "003Qu00000j5GgXIAU"
+      },
+      "qli": {
+        "pricebookEntryId": "01u0900000JaMy2AAF",
+        "assetId": "02iQu00000MOKaPIAX"
+      },
+      "shared": {
+        "accountId": "001Qu00000uJYaQIAW",
+        "areaId": "00109000019KnSOAA0",
+        "areaResponsibleId": "0050900000CTRFjAAP",
+        "assignedCommercialId": "0050900000CTRFjAAP",
+        "delegationResponsibleId": "0050900000CTRFjAAP",
+        "divisionResponsibleId": "005090000090m75AAA"
+      }
+    }
+  },
+  "MC": {
+    "INS": {
+      "opp": {
+        "recordTypeId": "012Qu0000007sLWIAY",
+        "contactId": "0030900001EP1YOAA1",
+        "delegationId": "0010900001dX1j0AAC",
+        "section": "MI"
+      },
+      "quote": {
+        "recordTypeId": "01209000000iw4VAAQ",
+        "pricebook2Id": "01s0900000Iwk3iAAB",
+        "contactId": "0030900001EP1YOAA1",
+        "delegationId": "0010900001dX1j0AAC",
+        "society": "1708",
+        "orderType": "ZSER",
+        "billingProfileId": "a1X090000048vUBEAY",
+        "paymentResponsibleId": "0030900001EP1YOAA1"
+      },
+      "qli": {
+        "pricebookEntryId": "01u0900000YUcbIAAT",
+        "assetId": "02iQu00000KU6PRIA1"
+      },
+      "shared": {
+        "accountId": "0010900001Mh64kAAB",
+        "areaId": "0010900001dX1j0AAC",
+        "areaResponsibleId": "005Qu0000001PqnIAE",
+        "assignedCommercialId": "005Qu000009GNMrIAO",
+        "delegationResponsibleId": "0050900000AzbNQAAZ",
+        "divisionResponsibleId": "005090000090m75AAA"
+      }
+    }
+  },
+  "PR": {
+    "PR": {
+      "opp": {
+        "recordTypeId": "012Qu0000007sLWIAY",
+        "contactId": "003Qu00000NRpm0IAD",
+        "delegationId": "001Qu00000OQUd1IAH",
+        "section": "BM"
+      },
+      "quote": {
+        "recordTypeId": "01209000000iw4VAAQ",
+        "pricebook2Id": "01sQu000000O5udIAC",
+        "contactId": "003Qu00000NRpm0IAD",
+        "delegationId": "001Qu00000OQUd1IAH",
+        "society": "7503",
+        "orderType": "ZOBR",
+        "billingProfileId": "a1XQu000008wfaQMAQ",
+        "paymentResponsibleId": "003Qu00000NRpm0IAD"
+      },
+      "qli": {
+        "pricebookEntryId": "01uQu000005UPUcIAO",
+        "assetId": null
+      },
+      "shared": {
+        "accountId": "0010900001Mi1tLAAR",
+        "areaId": "001Qu00000OQkNyIAL",
+        "areaResponsibleId": "005Qu000006Z9jPIAS",
+        "assignedCommercialId": "005Qu000009s3jjIAA",
+        "delegationResponsibleId": "005Qu000008KaYzIAK",
+        "divisionResponsibleId": "005Qu000006Xou5IAC"
+      }
+    }
+  },
+  "SI": {
+    "SI": {
+      "opp": {
+        "recordTypeId": "012Qu0000007sLWIAY",
+        "contactId": "003Qu00000borjnIAA",
+        "delegationId": "001Qu00000auP2DIAU",
+        "section": "SV"
+      },
+      "quote": {
+        "recordTypeId": "01209000000iw4VAAQ",
+        "pricebook2Id": "01sQu000001QGmwIAG",
+        "contactId": "003Qu00000borjnIAA",
+        "delegationId": "001Qu00000auP2DIAU",
+        "society": "1700",
+        "orderType": "ZSER",
+        "billingProfileId": null,
+        "paymentResponsibleId": null
+      },
+      "qli": {
+        "pricebookEntryId": "01uQu000007kpneIAA",
+        "assetId": "02iQu00000LuerWIAR"
+      },
+      "shared": {
+        "accountId": "001Qu00000oNSQJIA4",
+        "areaId": "001Qu00000auNy6IAE",
+        "areaResponsibleId": "005Qu000009EZojIAG",
+        "assignedCommercialId": "005Qu000009EZojIAG",
+        "delegationResponsibleId": "005Qu000009EZojIAG",
+        "divisionResponsibleId": "005Qu000009EQ0nIAG"
+      }
+    }
+  },
+  "MA": {
+    "INS": {
+      "opp": {
+        "recordTypeId": "012Qu0000007sLWIAY",
+        "contactId": "003Qu00000UDvWEIA1",
+        "delegationId": "0010900002AEJTkAAP",
+        "section": "MB"
+      },
+      "quote": {
+        "recordTypeId": "01209000000iw4VAAQ",
+        "pricebook2Id": "01s0900000IoWzwAAF",
+        "contactId": "003Qu00000UDvWEIA1",
+        "delegationId": "0010900002AEJTkAAP",
+        "society": "1200",
+        "orderType": "ZOBR",
+        "billingProfileId": "a1X09000000ODaXEAW",
+        "paymentResponsibleId": "0030900001EOTVqAAP"
+      },
+      "qli": {
+        "pricebookEntryId": "01u0900000iKVUOAA4",
+        "assetId": "02i09000008XdSaAAK"
+      },
+      "shared": {
+        "accountId": "0010900001MhV12AAF",
+        "areaId": "0010900002AEJFEAA5",
+        "areaResponsibleId": "005Qu000007AMUfIAO",
+        "assignedCommercialId": "005090000090m4RAAQ",
+        "delegationResponsibleId": "005090000090m6ZAAQ",
+        "divisionResponsibleId": "005090000090m75AAA"
+      }
+    }
+  }
+}

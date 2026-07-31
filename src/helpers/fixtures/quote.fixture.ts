@@ -1,21 +1,15 @@
 import { faker } from '@faker-js/faker';
+import { getTestData } from '../../config/testdata';
 
-export const QUOTE_REFS = {
-  RECORD_TYPE:              '01209000000iw4VAAQ',
-  PRICEBOOK_ID:             '01s0900000Iwk3iAAB',
-  ACCOUNT_ID:               '001JW000007t8vWYAQ',
-  CONTACT_ID:               '003JW000012ubJYYAY',
-  PRICEBOOK_ENTRY_ID:       '01u0900000YUcc4AAD',
-  ASSET_ID:                 '02iJW000003J3N3YAK',
-  DELEGATION:               '001JW000007SxQ7YAK',
-  AREA:                     '001JW000007SjblYAC',
-  AREA_RESPONSIBLE:         '0050900000AzbNQAAZ',
-  ASSIGNED_COMMERCIAL:      '0050900000AeA5JAAV',
-  DELEGATION_RESPONSIBLE:   '0050900000AzbNQAAZ',
-  DIVISION_RESPONSIBLE:     '005090000090m75AAA',
-  PAYMENT_RESPONSIBLE:      '003JW000005rgWGYAY',
-  BILLING_PROFILE:          'a1XJW000000AQ9J2AW',
-};
+interface QuoteRefs {
+  RECORD_TYPE: string; PRICEBOOK_ID: string; ACCOUNT_ID: string; CONTACT_ID: string;
+  PRICEBOOK_ENTRY_ID: string; ASSET_ID: string; DELEGATION: string; AREA: string;
+  AREA_RESPONSIBLE: string; ASSIGNED_COMMERCIAL: string; DELEGATION_RESPONSIBLE: string;
+  DIVISION_RESPONSIBLE: string; PAYMENT_RESPONSIBLE: string; BILLING_PROFILE: string;
+}
+interface QuoteTestData { base: QuoteRefs }
+
+export const QUOTE_REFS = getTestData<QuoteTestData>('quote').base;
 
 export interface QuoteFixture {
   Name:                     string;

@@ -6,7 +6,7 @@ import { INSTANCE_URL, API_VERSION } from '../request.helper';
 export interface LeadPayload {
   LastName: string;
   Company: string;
-  RecordTypeId?: string;
+  RecordTypeId?: string | null;
   Delegation__c?: string;
   Email?: string;
   Phone?: string;

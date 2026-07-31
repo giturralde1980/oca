@@ -2,8 +2,11 @@ import pactum from 'pactum';
 import { sfQuery } from '../salesforce-query.helper';
 import { updateRecord } from '../salesforce-crud.helper';
 import { TestReport } from '../report.helper';
+import { getTestData } from '../../config/testdata';
 
-const TECHNICIAN_ID = '0HnJW000000xvQT0AY'; // German Iturralde
+interface StepsTestData { TECHNICIAN_ID: string }
+
+const TECHNICIAN_ID = getTestData<StepsTestData>('steps').TECHNICIAN_ID; // German Iturralde
 
 export async function patchOrderActivity(
   orderId:     string,

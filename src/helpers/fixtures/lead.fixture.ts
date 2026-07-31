@@ -1,14 +1,20 @@
 import { faker } from '@faker-js/faker';
+import { getTestData } from '../../config/testdata';
+
+interface LeadTestData {
+  RECORD_TYPES: { OTRAS_LN: string | null };
+  DELEGATIONS: { DEFAULT: string };
+  DIVISION_DEFAULT: string;
+  LEAD_TYPE_DEFAULT: string | null;
+}
+
+const data = getTestData<LeadTestData>('lead');
 
 // RecordType "Otras LN" — the only type confirmed to convert without extra requirements
-export const RECORD_TYPES = {
-  OTRAS_LN: '012JW000001HQITYA4',
-};
+export const RECORD_TYPES = data.RECORD_TYPES;
 
 // Delegation__c must be an Account with RecordType = 'Delegacion' — required to convert a Lead
-export const DELEGATIONS = {
-  DEFAULT: '001JW00000sULUXYA4',
-};
+export const DELEGATIONS = data.DELEGATIONS;
 
 const CONTROL_LETTERS = 'JABCDEFGHI';
 
@@ -45,7 +51,7 @@ const REAL_ADDRESSES = [
 export interface LeadFixture {
   LastName: string;
   Company: string;
-  RecordTypeId: string;
+  RecordTypeId: string | null;
   Delegation__c: string;
   Email?: string;
   Phone?: string;
@@ -69,8 +75,8 @@ export function buildLead(overrides: Partial<LeadFixture> = {}): LeadFixture {
     Country:               'Spain',
     RecordTypeId:          RECORD_TYPES.OTRAS_LN,
     Delegation__c:         DELEGATIONS.DEFAULT,
-    DTT_fld_leadType__c:   'Por defecto',
-    Division__c:           'PE - Servicios Técnicos',
+    DTT_fld_leadType__c:   data.LEAD_TYPE_DEFAULT,
+    Division__c:           data.DIVISION_DEFAULT,
     ...overrides,
   };
 }

@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 const env = process.env.TEST_ENV;
-const validEnvs = ['int', 'qa', 'stg', 'prd', 'carladev'];
+const validEnvs = ['int', 'qa', 'uat', 'prd', 'carladev'];
 
 if (!env || !validEnvs.includes(env)) {
   throw new Error(

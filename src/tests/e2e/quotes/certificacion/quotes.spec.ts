@@ -10,8 +10,11 @@ import {
   assertSAPReferenceOrderNumber,
   SourceLineItem,
 } from '../../../../helpers/steps/idi-quote.steps';
+import { getTestData } from '../../../../config/testdata';
 
-const SOURCE_QUOTE_ID = '0Q0JW000008SWZp0AO';
+interface StepsTestData { SOURCE_QUOTE_ID: { certificacion: string } }
+
+const SOURCE_QUOTE_ID = getTestData<StepsTestData>('steps').SOURCE_QUOTE_ID.certificacion;
 
 describe('Funcional — Quotes IDI', () => {
   let suite:    SuiteReport;

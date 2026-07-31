@@ -1,20 +1,16 @@
 import { faker } from '@faker-js/faker';
 import { buildQuote, QuoteFixture } from './quote.fixture';
+import { getTestData } from '../../config/testdata';
 
-export const QUOTE_IDI_REFS = {
-  RECORD_TYPE:             '012JW000005ifXdYAI',
-  PRICEBOOK_ID:            '01sJW00000A9scvYAB',
-  ACCOUNT_ID:              '001JW000007t8vWYAQ',
-  CONTACT_ID:              '003JW00001BwMe1YAF',
-  DELEGATION:              '001JW00000sULUXYA4',
-  AREA:                    '001JW00000sUJNwYAO',
-  AREA_RESPONSIBLE:        '005JW00000Fk0sSYAR',
-  ASSIGNED_COMMERCIAL:     '005JW00000cbpIyYAI',
-  DELEGATION_RESPONSIBLE:  '005JW00000Fk0sSYAR',
-  DIVISION_RESPONSIBLE:    '005Qu0000002BiXIAU',
-  PAYMENT_RESPONSIBLE:     '003JW00001BwMe1YAF',
-  BILLING_PROFILE:         'a1XJW000003Dhzt2AC',
-};
+interface QuoteIdiRefs {
+  RECORD_TYPE: string; PRICEBOOK_ID: string; ACCOUNT_ID: string; CONTACT_ID: string;
+  DELEGATION: string; AREA: string; AREA_RESPONSIBLE: string; ASSIGNED_COMMERCIAL: string;
+  DELEGATION_RESPONSIBLE: string; DIVISION_RESPONSIBLE: string; PAYMENT_RESPONSIBLE: string;
+  BILLING_PROFILE: string;
+}
+interface QuoteTestData { idi: QuoteIdiRefs }
+
+export const QUOTE_IDI_REFS = getTestData<QuoteTestData>('quote').idi;
 
 export function buildQuoteIDI(
   opportunityId: string | null,

@@ -2,13 +2,16 @@ import { createOpportunity } from './opportunity.steps';
 import { createQuote, createQuoteLineItem } from './quote.steps';
 import { updateRecord } from '../salesforce-crud.helper';
 import { getOrgRefs } from '../../config/org-refs';
+import { getTestData } from '../../config/testdata';
 import { TestReport } from '../report.helper';
+
+interface StepsTestData { FRAMEWORK_CONTRACT_RECORD_TYPE: string }
 
 // "Contrato Marco" is not a separate Salesforce object — it's a Quote with
 // RecordTypeId = Framework_Contract (vs. Comercial_Offer for Oferta Comercial). Discovered by
 // following RelatedContract__c (label "Linked framework agreement"), a QuoteLineItem field that
 // references Quote itself.
-export const FRAMEWORK_CONTRACT_RECORD_TYPE = '01209000000iw4WAAQ';
+export const FRAMEWORK_CONTRACT_RECORD_TYPE = getTestData<StepsTestData>('steps').FRAMEWORK_CONTRACT_RECORD_TYPE;
 
 export interface FrameworkContractSetup {
   oppId:      string;

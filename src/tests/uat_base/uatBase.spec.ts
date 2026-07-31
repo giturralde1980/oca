@@ -51,10 +51,13 @@ import { getQuote, createQuote, createQuoteLineItem } from '../../helpers/steps/
 import { setupFrameworkContract, setWinResponsibleFields } from '../../helpers/steps/framework-contract.steps';
 import { setupRGQuote, winRGQuoteAndGetOrder } from '../../helpers/steps/rg-quote.steps';
 import { createPurchaseOrder, createPurchaseOrderLine, SUPPLIER_ACCOUNT_ID_2 } from '../../helpers/steps/purchase-order.steps';
+import { getTestData } from '../../config/testdata';
+
+interface StepsTestData { SOURCE_QUOTE_ID: { industria: string } }
 
 // Source Quote used to seed line-item pricing data (same one used by the proven
 // Industria E2E flow — reused here per business decision, see src/tests/e2e/quotes/industria).
-const INDUSTRIA_SOURCE_QUOTE_ID = '0Q0JW0000083YJt0AM';
+const INDUSTRIA_SOURCE_QUOTE_ID = getTestData<StepsTestData>('steps').SOURCE_QUOTE_ID.industria;
 
 describe('Funcional — UAT Base', () => {
   let suite: SuiteReport;
@@ -136,7 +139,8 @@ describe('Funcional — UAT Base', () => {
         const accountId = await createAccount(buildAccount({ RecordTypeId: ACCOUNT_RECORD_TYPES.BUSINESS }));
         report.step('Crear Cuenta (Cliente)', { 'Account Id': accountId, 'RecordTypeId': ACCOUNT_RECORD_TYPES.BUSINESS }, 'ok');
 
-        await verifyAccountLinkedToSAP(accountId, { timeoutMs: 60000 });
+        // 90s: el sync SAP de cuentas Cliente puede tardar más de 60s en algunos entornos.
+        await verifyAccountLinkedToSAP(accountId, { timeoutMs: 90000 });
         report.step('Verificar Cuenta sincronizada con SAP', { 'Account Id': accountId }, 'ok');
 
         const account = await getAccount(accountId);
@@ -148,7 +152,7 @@ describe('Funcional — UAT Base', () => {
         report.logForTestRail();
         suite.add(report);
       }
-    }, 60000);
+    }, 120000);
 
     // The BillingProfile__c→SAP sync trigger is unconfirmed — same open question as C517's
     // Contact sync (tried the exact field recipe from a real synced record, still not enough).

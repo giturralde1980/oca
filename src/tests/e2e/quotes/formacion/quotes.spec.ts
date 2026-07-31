@@ -7,8 +7,11 @@ import {
   assertQuoteStatus,
   SourceLineItem,
 } from '../../../../helpers/steps/formacion-quote.steps';
+import { getTestData } from '../../../../config/testdata';
 
-const SOURCE_QUOTE_ID = '0Q0JW000008XWUL0A4';
+interface StepsTestData { SOURCE_QUOTE_ID: { formacion: string } }
+
+const SOURCE_QUOTE_ID = getTestData<StepsTestData>('steps').SOURCE_QUOTE_ID.formacion;
 
 describe.skip('Funcional — Quotes Formación', () => {
   let suite:    SuiteReport;

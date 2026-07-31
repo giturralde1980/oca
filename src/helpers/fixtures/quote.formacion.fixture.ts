@@ -1,17 +1,15 @@
 import { buildQuote, QuoteFixture } from './quote.fixture';
+import { getTestData } from '../../config/testdata';
 
-export const QUOTE_FORMACION_REFS = {
-  RECORD_TYPE:              '012JW000000BzmjYAC',   // Oferta formación
-  PRICEBOOK_ID:             '01sJW000000bxdpYAA',
-  ACCOUNT_ID:               '001JW000007t8vWYAQ',
-  CONTACT_ID:               '003JW00000y1YYoYAM',
-  DELEGATION:               '001JW000015LASPYA4',
-  BILLING_PROFILE:          'a1XJW000000B4Q52AK',
-  ASSIGNED_COMMERCIAL:      '005Qu0000002BiXIAU',
-  DELEGATION_RESPONSIBLE:   '005JW000001Jo7AYAS',
-  DIVISION_RESPONSIBLE:     '005Qu0000002BiXIAU',
-  PAYMENT_RESPONSIBLE:      '003JW000008sws4YAA',
-};
+interface QuoteFormacionRefs {
+  RECORD_TYPE: string; PRICEBOOK_ID: string; ACCOUNT_ID: string; CONTACT_ID: string;
+  DELEGATION: string; BILLING_PROFILE: string; ASSIGNED_COMMERCIAL: string;
+  DELEGATION_RESPONSIBLE: string; DIVISION_RESPONSIBLE: string; PAYMENT_RESPONSIBLE: string;
+}
+interface QuoteTestData { formacion: QuoteFormacionRefs }
+
+// RECORD_TYPE: Oferta formación
+export const QUOTE_FORMACION_REFS = getTestData<QuoteTestData>('quote').formacion;
 
 export function buildQuoteFormacion(
   opportunityId: string,

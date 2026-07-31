@@ -1,12 +1,13 @@
 import { faker } from '@faker-js/faker';
 import { OpportunityFixture } from './opportunity.fixture';
+import { getTestData } from '../../config/testdata';
 
-export const OPP_FORMACION_REFS = {
-  RECORD_TYPE: '012JW000000BzmdYAC',   // LN FO - Privada
-  ACCOUNT_ID:  '001JW000007t8vWYAQ',
-  CONTACT_ID:  '003JW00000y1YYoYAM',
-  DELEGATION:  '001JW000015LASPYA4',
-};
+interface OpportunityTestData {
+  formacion: { RECORD_TYPE: string; ACCOUNT_ID: string; CONTACT_ID: string; DELEGATION: string };
+}
+
+// LN FO - Privada
+export const OPP_FORMACION_REFS = getTestData<OpportunityTestData>('opportunity').formacion;
 
 export function buildOpportunityFormacion(
   overrides: Partial<OpportunityFixture> = {},
